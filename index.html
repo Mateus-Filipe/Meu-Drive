@@ -9,8 +9,6 @@
     body { margin: 0; background-color: #181818; color: #e3e3e3; display: flex; height: 100vh; overflow: hidden; }
     #sidebar { width: 240px; background: #1e1e1e; padding: 16px; border-right: 1px solid #2d2d2d; display: flex; flex-direction: column; gap: 12px; }
     .logo { font-size: 18px; font-weight: bold; color: #8ab4f8; margin-bottom: 12px; }
-    .btn-action { background: #004a77; color: #c2e7ff; border: none; padding: 10px; border-radius: 20px; cursor: pointer; font-weight: bold; text-align: center; text-decoration: none; font-size: 13px; display: block; }
-    .btn-action:hover { background: #005c96; }
     #main { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
     .card { background: #252525; border-radius: 12px; padding: 12px; border: 1px solid #333; display: flex; flex-direction: column; gap: 8px; text-decoration: none; color: inherit; transition: 0.2s; }
@@ -31,24 +29,30 @@
 
   <div id="sidebar">
     <div class="logo">📁 Drive TV Box</div>
-    <a href="./files/" class="btn-action">📂 Explorar Diretório /files/</a>
+    <div id="info" style="font-size: 12px; color: #888;">Carregando...</div>
   </div>
 
   <div id="main">
-    <div id="status">Carregando índice do servidor...</div>
+    <div id="status">Conectando diretamente à TV Box...</div>
     <div class="grid" id="gridContent"></div>
   </div>
 
   <script>
-    async function inicializar() {
+    // Conexão direta ao servidor
+    const SERVIDOR_URL = 'http://hd-externo.mateus.mooo.com:2101/files/';
+
+    async function carregarArquivos() {
       const statusEl = document.getElementById('status');
+      const infoEl = document.getElementById('info');
       const gridEl = document.getElementById('gridContent');
 
       try {
-        // Tenta buscar a lista do servidor nativo na rota /files/
-        const response = await fetch('./files/');
-        if (!response.ok) throw new Error('Caminho /files/ indisponível');
+        const response = await fetch(SERVIDOR_URL);
         
+        if (!response.ok) {
+          throw new Error(`Erro de resposta: ${response.status} ${response.statusText}`);
+        }
+
         const htmlText = await response.text();
         const parser = new DOMParser();
         const doc = parser.parseFromString(htmlText, 'text/html');
@@ -59,21 +63,24 @@
           let href = a.getAttribute('href');
           let name = a.innerText.trim() || href;
 
-          if (!href || href === '#' || href.includes('index.html') || href.startsWith('javascript:') || href === '../' || name === 'Parent Directory') return;
+          if (!href || href === '#' || href.startsWith('javascript:') || href === '../' || name === 'Parent Directory') return;
 
           let isFolder = href.endsWith('/') || (!href.split('/').pop().includes('.') && !href.includes('?'));
           let cleanName = decodeURIComponent(href.split('/').filter(Boolean).pop() || name);
           let ext = isFolder ? 'folder' : (cleanName.split('.').pop().toLowerCase() || 'file');
 
-          items.push({ name: cleanName, url: './files/' + href.replace(/^\//, ''), isFolder: isFolder, ext: ext });
+          let fileUrl = href.startsWith('http') ? href : SERVIDOR_URL + href.replace(/^\//, '');
+
+          items.push({ name: cleanName, url: fileUrl, isFolder: isFolder, ext: ext });
         });
 
         if (items.length === 0) {
-          statusEl.innerText = "Nenhum arquivo encontrado automaticamente. Clique no botão 'Explorar Diretório' na barra lateral.";
+          statusEl.innerText = 'Nenhum arquivo encontrado no diretório.';
           return;
         }
 
-        statusEl.innerText = `${items.length} item(ns) encontrado(s) no HD Externo:`;
+        statusEl.innerText = `Exibindo arquivos do HD Externo:`;
+        infoEl.innerText = `${items.length} itens encontrados`;
 
         gridEl.innerHTML = items.map(item => {
           let badgeClass = 'badge-jpg';
@@ -102,15 +109,17 @@
 
       } catch (err) {
         statusEl.innerHTML = `
-          <div style="background: #282a2c; padding: 16px; border-radius: 8px;">
-            <p style="margin-top:0;"><b>Como visualizar seus 100 GB de fotos:</b></p>
-            <p>Se o servidor estiver com o Static Mode ativado, clique no botão abaixo para acessar a árvore de arquivos nativa da TV Box:</p>
-            <a href="./files/" class="btn-action" style="display:inline-block;">Acessar Arquivos (/files/)</a>
+          <div style="background: #331f1f; color: #ff9999; padding: 16px; border-radius: 8px; border: 1px solid #772222;">
+            <b>Erro ao carregar os arquivos:</b> ${err.message}<br><br>
+            <span style="font-size:12px; color:#ddd;">
+              <b>Se a página não carregar no GitHub Pages (HTTPS):</b><br>
+              Clique no ícone de cadeado/configurações na barra do navegador (ao lado da URL do GitHub) > <b>Configurações do site</b> > Altere <b>Conteúdo Inseguro</b> para <b>Permitir</b>.
+            </span>
           </div>`;
       }
     }
 
-    window.onload = inicializar;
+    window.onload = carregarArquivos;
   </script>
 </body>
 </html>
