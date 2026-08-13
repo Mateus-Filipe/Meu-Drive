@@ -38,7 +38,7 @@
   <div id="main">
     <div class="nav-bar">
       <button id="btnVoltar" class="btn-back" onclick="voltarPasta()">⬅ Voltar</button>
-      <div id="status">Conectando ao servidor...</div>
+      <div id="status">Conectando...</div>
     </div>
     <div class="grid" id="gridContent"></div>
   </div>
@@ -60,17 +60,11 @@
       statusEl.innerText = 'Carregando arquivos...';
       gridEl.innerHTML = '';
 
-      // Usa proxy para contornar o HTTPS do GitHub Pages
-      const proxyUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(targetUrl);
-
       try {
-        const response = await fetch(proxyUrl);
-        if (!response.ok) throw new Error(`Erro: ${response.status}`);
+        const response = await fetch(targetUrl);
+        if (!response.ok) throw new Error(`Status ${response.status}`);
 
-        const data = await response.json();
-        const htmlText = data.contents;
-        if (!htmlText) throw new Error("Não foi possível ler os dados.");
-
+        const htmlText = await response.text();
         const parser = new DOMParser();
         const doc = parser.parseFromString(htmlText, 'text/html');
         const links = Array.from(doc.querySelectorAll('a'));
@@ -86,7 +80,6 @@
           let cleanName = decodeURIComponent(href.split('/').filter(Boolean).pop() || name);
           let ext = isFolder ? 'folder' : (cleanName.split('.').pop().toLowerCase() || 'file');
 
-          // Corrige montagem da URL completa no proxy
           let fullUrl = href.startsWith('http') ? href : new URL(href, targetUrl).href;
 
           items.push({ name: cleanName, url: fullUrl, isFolder: isFolder, ext: ext });
@@ -137,7 +130,7 @@
         }).join('');
 
       } catch (err) {
-        statusEl.innerText = `Erro ao abrir: ${err.message}`;
+        statusEl.innerHTML = `<b style="color: #ff8888;">Erro de conexão:</b> ${err.message}`;
       }
     }
 
