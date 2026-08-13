@@ -9,23 +9,54 @@
     body { margin: 0; background-color: #181818; color: #e3e3e3; display: flex; height: 100vh; overflow: hidden; }
     #sidebar { width: 240px; background: #1e1e1e; padding: 16px; border-right: 1px solid #2d2d2d; display: flex; flex-direction: column; gap: 12px; }
     .logo { font-size: 18px; font-weight: bold; color: #8ab4f8; margin-bottom: 12px; cursor: pointer; }
-    #main { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
-    .nav-bar { display: flex; align-items: center; gap: 12px; }
-    .btn-back { background: #3c4043; color: #fff; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; display: none; }
+    #main { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+    
+    /* Topo & Controles */
+    .top-bar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; background: #222; padding: 10px 16px; border-radius: 8px; border: 1px solid #333; }
+    .nav-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .btn-back { background: #3c4043; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; }
     .btn-back:hover { background: #5f6368; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
+    
+    /* Breadcrumbs Estilo Windows */
+    .breadcrumb { display: flex; align-items: center; gap: 4px; font-size: 13px; color: #aaa; flex-wrap: wrap; }
+    .crumb-item { color: #8ab4f8; cursor: pointer; padding: 2px 6px; border-radius: 4px; }
+    .crumb-item:hover { background: #333; text-decoration: underline; }
+    .crumb-sep { color: #666; }
+
+    /* Seletor de Tamanho */
+    .size-controls { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #aaa; }
+    .btn-size { background: #2d2d2d; color: #ccc; border: 1px solid #444; padding: 4px 8px; border-radius: 4px; cursor: pointer; }
+    .btn-size.active { background: #8ab4f8; color: #000; font-weight: bold; border-color: #8ab4f8; }
+
+    /* Grid com tamanhos dinâmicos */
+    .grid { display: grid; gap: 16px; }
+    .grid.size-sm { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+    .grid.size-md { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+    .grid.size-lg { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+
+    .grid.size-sm .preview-box { height: 80px; }
+    .grid.size-md .preview-box { height: 120px; }
+    .grid.size-lg .preview-box { height: 160px; }
+
     .card { background: #252525; border-radius: 12px; padding: 12px; border: 1px solid #333; display: flex; flex-direction: column; gap: 8px; text-decoration: none; color: inherit; transition: 0.2s; cursor: pointer; }
     .card:hover { background: #2d2d2d; border-color: #8ab4f8; }
-    .preview-box { height: 120px; background: #1a1a1a; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
-    .preview-box img { width: 100%; height: 100%; object-fit: cover; }
+    .preview-box { background: #1a1a1a; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
+    .preview-box img, .preview-box video { width: 100%; height: 100%; object-fit: cover; }
     .file-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    
+    /* Badges de extensão */
     .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; width: fit-content; }
     .badge-folder { background: #3c4043; color: #8ab4f8; }
     .badge-raw { background: #d32f2f; color: #fff; }
     .badge-jpg { background: #0b6bcb; color: #fff; }
-    .badge-log { background: #2e7d32; color: #fff; }
-    .raw-overlay { position: absolute; bottom: 4px; right: 4px; background: rgba(0,0,0,0.8); color: #ff5252; font-size: 9px; padding: 2px 4px; border-radius: 3px; font-weight: bold; }
-    #status { font-size: 13px; color: #aaa; }
+    .badge-video { background: #9c27b0; color: #fff; }
+    .badge-pdf { background: #e53935; color: #fff; }
+    .badge-doc { background: #1565c0; color: #fff; }
+    .badge-xls { background: #2e7d32; color: #fff; }
+    .badge-ppt { background: #d84315; color: #fff; }
+    .badge-file { background: #616161; color: #fff; }
+    
+    #status { font-size: 12px; color: #888; }
   </style>
 </head>
 <body>
@@ -36,17 +67,56 @@
   </div>
 
   <div id="main">
-    <div class="nav-bar">
-      <button id="btnVoltar" class="btn-back" onclick="voltarPasta()">⬅ Voltar</button>
-      <div id="status">Conectando...</div>
+    <div class="top-bar">
+      <div class="nav-bar">
+        <button id="btnVoltar" class="btn-back" onclick="voltarPasta()">⬅ Voltar</button>
+        <div id="breadcrumb" class="breadcrumb"></div>
+      </div>
+      <div class="size-controls">
+        <span>Tamanho:</span>
+        <button class="btn-size" onclick="alterarTamanho('sm', this)">P</button>
+        <button class="btn-size active" onclick="alterarTamanho('md', this)">M</button>
+        <button class="btn-size" onclick="alterarTamanho('lg', this)">G</button>
+      </div>
     </div>
-    <div class="grid" id="gridContent"></div>
+    <div id="status">Conectando...</div>
+    <div class="grid size-md" id="gridContent"></div>
   </div>
 
   <script>
     const SERVIDOR_BASE = 'http://hd-externo.mateus.mooo.com:2101/files/';
     let historicoPastas = [];
     let pastaAtual = SERVIDOR_BASE;
+
+    function alterarTamanho(tamanho, btn) {
+      const grid = document.getElementById('gridContent');
+      grid.className = `grid size-${tamanho}`;
+      document.querySelectorAll('.btn-size').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
+
+    function atualizarBreadcrumb(targetUrl) {
+      const breadcrumbEl = document.getElementById('breadcrumb');
+      let caminhoRelativo = targetUrl.replace(SERVIDOR_BASE, '');
+      let partes = caminhoRelativo.split('/').filter(Boolean);
+      
+      let html = `<span class="crumb-item" onclick="navegarParaCaminho('${SERVIDOR_BASE}')">Início</span>`;
+      let urlAcumulada = SERVIDOR_BASE;
+
+      partes.forEach((parte, index) => {
+        urlAcumulada += encodeURIComponent(parte) + '/';
+        let nomeLimpo = decodeURIComponent(parte);
+        html += `<span class="crumb-sep">></span>`;
+        html += `<span class="crumb-item" onclick="navegarParaCaminho('${urlAcumulada}')">${nomeLimpo}</span>`;
+      });
+
+      breadcrumbEl.innerHTML = html;
+    }
+
+    function navegarParaCaminho(url) {
+      historicoPastas.push(pastaAtual);
+      carregarArquivos(url);
+    }
 
     async function carregarArquivos(targetUrl) {
       const statusEl = document.getElementById('status');
@@ -56,6 +126,7 @@
 
       pastaAtual = targetUrl;
       btnVoltar.style.display = historicoPastas.length > 0 ? 'block' : 'none';
+      atualizarBreadcrumb(targetUrl);
 
       statusEl.innerText = 'Carregando arquivos...';
       gridEl.innerHTML = '';
@@ -91,26 +162,48 @@
           return;
         }
 
-        let caminhoLimpo = decodeURIComponent(targetUrl.replace(SERVIDOR_BASE, '/'));
-        statusEl.innerText = `Caminho: ${caminhoLimpo}`;
+        statusEl.innerText = '';
         infoEl.innerText = `${items.length} itens`;
 
         gridEl.innerHTML = items.map(item => {
-          let badgeClass = 'badge-jpg';
+          let badgeClass = 'badge-file';
           let badgeText = item.ext.toUpperCase();
+          
           let isRaw = ['cr2', 'cr3', 'crm', 'nef', 'arw', 'dng'].includes(item.ext);
           let isImg = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(item.ext) || isRaw;
-          let isLog = ['log', 'txt', 'cube', 'xml', 'json'].includes(item.ext);
+          let isVid = ['mp4', 'mkv', 'webm', 'avi', 'mov'].includes(item.ext);
+          let isPdf = item.ext === 'pdf';
+          let isDoc = ['doc', 'docx'].includes(item.ext);
+          let isXls = ['xls', 'xlsx', 'csv'].includes(item.ext);
+          let isPpt = ['ppt', 'pptx'].includes(item.ext);
 
           if (item.isFolder) { badgeClass = 'badge-folder'; badgeText = 'PASTA'; }
           else if (isRaw) { badgeClass = 'badge-raw'; }
-          else if (isLog) { badgeClass = 'badge-log'; }
+          else if (isVid) { badgeClass = 'badge-video'; }
+          else if (isPdf) { badgeClass = 'badge-pdf'; }
+          else if (isDoc) { badgeClass = 'badge-doc'; }
+          else if (isXls) { badgeClass = 'badge-xls'; }
+          else if (isPpt) { badgeClass = 'badge-ppt'; }
+          else if (isImg) { badgeClass = 'badge-jpg'; }
 
-          let previewContent = item.isFolder 
-            ? `<span style="font-size: 36px;">📁</span>`
-            : (isImg 
-                ? `<img src="${item.url}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='block';"><span style="display:none; font-size:12px; color:#aaa;">📷 ${item.ext.toUpperCase()}</span>` 
-                : `<span style="font-size: 28px;">📄</span>`);
+          let previewContent = '';
+          if (item.isFolder) {
+            previewContent = `<span style="font-size: 36px;">📁</span>`;
+          } else if (isVid) {
+            previewContent = `<video src="${item.url}" preload="metadata" muted></video>`;
+          } else if (isImg) {
+            previewContent = `<img src="${item.url}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='block';"><span style="display:none; font-size:12px; color:#aaa;">📷 ${item.ext.toUpperCase()}</span>`;
+          } else if (isPdf) {
+            previewContent = `<span style="font-size: 32px;">📕</span>`;
+          } else if (isDoc) {
+            previewContent = `<span style="font-size: 32px;">📘</span>`;
+          } else if (isXls) {
+            previewContent = `<span style="font-size: 32px;">📗</span>`;
+          } else if (isPpt) {
+            previewContent = `<span style="font-size: 32px;">📙</span>`;
+          } else {
+            previewContent = `<span style="font-size: 28px;">📄</span>`;
+          }
 
           if (item.isFolder) {
             return `
@@ -122,7 +215,7 @@
           } else {
             return `
               <a href="${item.url}" target="_blank" class="card">
-                <div class="preview-box">${previewContent}${isRaw ? '<span class="raw-overlay">RAW</span>' : ''}</div>
+                <div class="preview-box">${previewContent}</div>
                 <div class="file-name" title="${item.name}">${item.name}</div>
                 <span class="badge ${badgeClass}">${badgeText}</span>
               </a>`;
@@ -130,7 +223,7 @@
         }).join('');
 
       } catch (err) {
-        statusEl.innerHTML = `<b style="color: #ff8888;">Erro de conexão:</b> ${err.message}`;
+        statusEl.innerHTML = `<b style="color: #ff8888;">Erro ao acessar:</b> ${err.message}`;
       }
     }
 
