@@ -12,14 +12,21 @@
     * { box-sizing: border-box; font-family: 'Segoe UI', Roboto, sans-serif; user-select: none; }
     body { margin: 0; background-color: #191919; color: #e3e3e3; display: flex; height: 100vh; overflow: hidden; }
     
-    #sidebar { width: 220px; background: #202020; padding: 16px; border-right: 1px solid #2d2d2d; display: flex; flex-direction: column; gap: 12px; }
-    .logo { font-size: 16px; font-weight: 600; color: #8ab4f8; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+    #sidebar { width: 220px; background: #202020; padding: 16px; border-right: 1px solid #2d2d2d; display: flex; flex-direction: column; gap: 8px; }
+    .sidebar-btn { font-size: 14px; font-weight: 500; color: #ccc; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 6px; transition: 0.2s; }
+    .sidebar-btn:hover, .sidebar-btn.active { background: #2f2f2f; color: #8ab4f8; }
     
     #main { flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; position: relative; }
     
-    /* Toolbar estilo Windows 11 */
-    .toolbar { display: flex; align-items: center; justify-content: space-between; background: #252525; padding: 6px 12px; border-radius: 8px; border: 1px solid #333; gap: 12px; }
-    .nav-bar { display: flex; align-items: center; gap: 8px; flex: 1; }
+    /* Toolbar e Barra de Navegação Estilo Windows 11 (Imagem 3) */
+    .address-bar-container { display: flex; align-items: center; gap: 8px; background: #252525; padding: 6px 12px; border-radius: 8px; border: 1px solid #333; }
+    
+    .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #aaa; background: #1e1e1e; padding: 6px 12px; border-radius: 6px; border: 1px solid #333; flex: 1; overflow-x: auto; }
+    .crumb-item { color: #eee; cursor: pointer; display: flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 4px; }
+    .crumb-item:hover { background: #333; color: #8ab4f8; }
+    .crumb-separator { color: #666; font-size: 11px; }
+
+    .toolbar-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
     .btn-tool { background: transparent; color: #ccc; border: 1px solid transparent; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px; }
     .btn-tool:hover { background: #333; border-color: #444; }
     
@@ -29,26 +36,17 @@
     .dropdown-item { padding: 8px 16px; cursor: pointer; display: flex; align-items: center; gap: 10px; color: #eee; }
     .dropdown-item:hover { background: #3a3a3a; }
 
-    .breadcrumb { display: flex; align-items: center; gap: 4px; font-size: 13px; color: #aaa; background: #1e1e1e; padding: 6px 12px; border-radius: 6px; border: 1px solid #333; flex: 1; }
-    .crumb-item { color: #8ab4f8; cursor: pointer; }
-    .crumb-item:hover { text-decoration: underline; }
-
-    /* Exibição em Grid (Tamanhos e Layouts) */
+    /* Exibição em Grid */
     .grid { display: grid; gap: 12px; }
-    
     .grid.view-xl { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
     .grid.view-xl .preview-box { height: 160px; }
-
     .grid.view-lg { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
     .grid.view-lg .preview-box { height: 120px; }
-
     .grid.view-md { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
     .grid.view-md .preview-box { height: 90px; }
-
     .grid.view-sm { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
     .grid.view-sm .preview-box { height: 60px; }
 
-    /* Modos Lista e Detalhes */
     .grid.view-list, .grid.view-details { display: flex; flex-direction: column; gap: 2px; }
     .grid.view-list .card, .grid.view-details .card { flex-direction: row; align-items: center; height: 38px; padding: 4px 12px; border-radius: 4px; }
     .grid.view-list .preview-box, .grid.view-details .preview-box { width: 24px; height: 24px; background: transparent; }
@@ -64,7 +62,7 @@
     .file-name { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; outline: none; }
     .file-name[contenteditable="true"] { background: #000; border: 1px solid #8ab4f8; white-space: normal; }
 
-    /* Context Menu Windows 11 */
+    /* Menu de Contexto */
     #contextMenu { display: none; position: fixed; background: #2c2c2c; border: 1px solid #454545; border-radius: 8px; width: 220px; box-shadow: 0 8px 16px rgba(0,0,0,0.5); z-index: 1000; padding: 6px; font-size: 13px; }
     .menu-top-actions { display: flex; justify-content: space-around; border-bottom: 1px solid #3d3d3d; padding-bottom: 6px; margin-bottom: 6px; }
     .menu-top-btn { background: transparent; border: none; color: #eee; padding: 6px; border-radius: 4px; cursor: pointer; font-size: 15px; }
@@ -83,18 +81,23 @@
 <body onclick="fecharMenus()" oncontextmenu="exibirContextMenuFundo(event)" onkeydown="tratarTeclas(event)">
 
   <div id="sidebar">
-    <div class="logo" onclick="resetarNavegacao()">💻 Este Computador</div>
-    <div id="info" style="font-size: 11px; color: #888;">Pronto</div>
+    <div class="sidebar-btn active" id="btnHome" onclick="resetarNavegacao()">💻 Este Computador</div>
+    <div class="sidebar-btn" id="btnTrash" onclick="abrirLixeira()">🗑️ Lixeira</div>
+    <div id="info" style="font-size: 11px; color: #888; margin-top: auto;">Pronto</div>
   </div>
 
   <div id="main">
-    <div class="toolbar">
-      <div class="nav-bar">
-        <button id="btnVoltar" class="btn-tool" onclick="voltarPasta()">⬅ Voltar</button>
-        <div id="breadcrumb" class="breadcrumb"></div>
-      </div>
+    <!-- Barra Superior com Voltar e Estrutura de Pastas estilo Windows (Imagem 2 e 3) -->
+    <div class="address-bar-container">
+      <button id="btnVoltar" class="btn-tool" onclick="voltarPasta()">⬅ Voltar</button>
+      <div id="breadcrumb" class="breadcrumb"></div>
+    </div>
 
-      <!-- Classificar -->
+    <!-- Barra de Opções de Visualização/Classificação -->
+    <div class="toolbar-actions" id="toolbarActions">
+      <button class="btn-tool" id="btnEsvaziarLixeira" style="display:none; color: #ff6b6b;" onclick="esvaziarLixeiraDefinitivo()">🗑️ Esvaziar Lixeira</button>
+      <div style="flex:1;"></div>
+
       <div class="dropdown">
         <button class="btn-tool" onclick="toggleDropdown(event, 'dropSort')">⇅ Classificar ▾</button>
         <div id="dropSort" class="dropdown-menu">
@@ -106,7 +109,6 @@
         </div>
       </div>
 
-      <!-- Visualizar -->
       <div class="dropdown">
         <button class="btn-tool" onclick="toggleDropdown(event, 'dropView')">☰ Visualizar ▾</button>
         <div id="dropView" class="dropdown-menu">
@@ -125,7 +127,7 @@
     <div class="grid view-lg" id="gridContent"></div>
   </div>
 
-  <!-- Modal Player de Vídeo -->
+  <!-- Player de Vídeo Modal -->
   <div id="videoModal">
     <span class="close-modal" onclick="fecharPlayerVideo()">✕</span>
     <h3 id="videoTitle" style="color: #fff; margin: 0;"></h3>
@@ -139,6 +141,9 @@
       <button class="menu-top-btn" title="Copiar" onclick="copiarItem()">📋</button>
       <button class="menu-top-btn" title="Renomear" onclick="renomearSelecionado()">✏️</button>
       <button class="menu-top-btn" title="Excluir" onclick="deletarSelecionado()">🗑️</button>
+    </div>
+    <div class="menu-item" id="btnRestaurar" style="display:none;" onclick="restaurarItemLixeira()">
+      <span>🔄 Restaurar</span>
     </div>
     <div class="menu-item" id="btnAbrir" onclick="abrirItemSelecionado()">
       <span>📂 Abrir</span>
@@ -154,11 +159,7 @@
     </div>
     <div class="menu-divider"></div>
     <div class="menu-item" onclick="copiarLink()">
-      <span>🔗 Copiar como caminho</span>
-    </div>
-    <div class="menu-item" onclick="verPropriedades()">
-      <span>🛠️ Propriedades</span>
-      <span class="menu-shortcut">Alt+Enter</span>
+      <span>🔗 Copiar caminho</span>
     </div>
   </div>
 
@@ -166,13 +167,22 @@
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
     const SERVIDOR_BASE = 'http://hd-externo.mateus.mooo.com:2101/files/';
-    let historicoPastas = [];
     let pastaAtual = SERVIDOR_BASE;
+    let emLixeira = false;
     let itemSelecionado = null;
     let itemTransferencia = null;
     let ordenacaoAtual = 'name';
     let ordemDirecao = 'asc';
     let listaArquivosAtual = [];
+
+    // Gerenciamento da Lixeira em LocalStorage
+    function obterLixeira() {
+      return JSON.parse(localStorage.getItem('lixeira_drive') || '[]');
+    }
+
+    function salvarLixeira(itens) {
+      localStorage.setItem('lixeira_drive', JSON.stringify(itens));
+    }
 
     function toggleDropdown(e, id) {
       e.stopPropagation();
@@ -203,9 +213,14 @@
     }
 
     async function carregarArquivos(targetUrl) {
+      emLixeira = false;
       pastaAtual = targetUrl;
       itemSelecionado = null;
+      atualizarSidebarActive('btnHome');
+      document.getElementById('btnEsvaziarLixeira').style.display = 'none';
       document.getElementById('status').innerText = 'Carregando...';
+
+      atualizarBreadcrumb();
 
       try {
         const response = await fetch(targetUrl);
@@ -214,7 +229,9 @@
         const doc = parser.parseFromString(htmlText, 'text/html');
         const links = Array.from(doc.querySelectorAll('a'));
 
+        const lixeira = obterLixeira();
         listaArquivosAtual = [];
+
         links.forEach(a => {
           let href = a.getAttribute('href');
           let name = a.innerText.trim() || href;
@@ -225,13 +242,74 @@
           let ext = isFolder ? 'folder' : (cleanName.split('.').pop().toLowerCase() || 'file');
           let fullUrl = href.startsWith('http') ? href : new URL(href, targetUrl).href;
 
-          listaArquivosAtual.push({ name: cleanName, url: fullUrl, isFolder, ext });
+          // Se não estiver na lixeira, exibe
+          if (!lixeira.some(l => l.url === fullUrl)) {
+            listaArquivosAtual.push({ name: cleanName, url: fullUrl, isFolder, ext, originalFolder: pastaAtual });
+          }
         });
 
         document.getElementById('status').innerText = '';
         renderizarGrid();
       } catch (err) {
         document.getElementById('status').innerText = 'Erro de conexão: ' + err.message;
+      }
+    }
+
+    /* Lixeira */
+    function abrirLixeira() {
+      emLixeira = true;
+      itemSelecionado = null;
+      atualizarSidebarActive('btnTrash');
+      document.getElementById('btnEsvaziarLixeira').style.display = 'inline-flex';
+      
+      listaArquivosAtual = obterLixeira();
+      atualizarBreadcrumbLixeira();
+      renderizarGrid();
+    }
+
+    function atualizarSidebarActive(id) {
+      document.querySelectorAll('.sidebar-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+    }
+
+    /* Atualizador da Barra de Endereço (Breadcrumb) - Imagem 2 & 3 */
+    function atualizarBreadcrumb() {
+      const breadcrumb = document.getElementById('breadcrumb');
+      const pathClean = pastaAtual.replace(SERVIDOR_BASE, '');
+      const partes = pathClean.split('/').filter(Boolean);
+
+      let html = `<div class="crumb-item" onclick="carregarArquivos('${SERVIDOR_BASE}')">💻 Este Computador</div>`;
+      let urlAcumulada = SERVIDOR_BASE;
+
+      partes.forEach((p) => {
+        urlAcumulada += p + '/';
+        let target = urlAcumulada;
+        html += `<span class="crumb-separator">❯</span>`;
+        html += `<div class="crumb-item" onclick="carregarArquivos('${target}')">${decodeURIComponent(p)}</div>`;
+      });
+
+      breadcrumb.innerHTML = html;
+    }
+
+    function atualizarBreadcrumbLixeira() {
+      document.getElementById('breadcrumb').innerHTML = `
+        <div class="crumb-item">💻 Este Computador</div>
+        <span class="crumb-separator">❯</span>
+        <div class="crumb-item" style="color:#8ab4f8;">🗑️ Lixeira</div>
+      `;
+    }
+
+    function voltarPasta() {
+      if (emLixeira) {
+        carregarArquivos(SERVIDOR_BASE);
+        return;
+      }
+      if (pastaAtual === SERVIDOR_BASE) return;
+      let partes = pastaAtual.replace(/\/$/, '').split('/');
+      partes.pop();
+      let novaUrl = partes.join('/') + '/';
+      if (novaUrl.length >= SERVIDOR_BASE.length) {
+        carregarArquivos(novaUrl);
       }
     }
 
@@ -266,7 +344,7 @@
                ondblclick="executarAbrir('${item.url}', ${item.isFolder}, '${item.name}')"
                oncontextmenu="exibirContextMenuCard(event, '${item.url}', ${item.isFolder}, '${item.name}', this)">
             <div class="preview-box" id="prev-${idx}">
-              ${isImg ? `<img src="${item.url}" loading="lazy" draggable="true">` : ''}
+              ${isImg ? `<img src="${item.url}" loading="lazy">` : ''}
               ${isVid ? `<video src="${item.url}" preload="metadata"></video>` : ''}
               ${!isImg && !isVid ? `<span style="font-size:32px">${icon}</span>` : ''}
             </div>
@@ -279,7 +357,6 @@
       });
     }
 
-    /* Arrastar para Baixar Direct no PC */
     function iniciarDragDownload(e, url, filename) {
       e.dataTransfer.setData('DownloadURL', `application/octet-stream:${filename}:${url}`);
     }
@@ -326,6 +403,7 @@
     }
 
     function executarAbrir(url, isFolder, name) {
+      if (emLixeira) return;
       let ext = name ? name.split('.').pop().toLowerCase() : '';
       let isVid = ['mp4', 'mkv', 'webm', 'mov', 'avi'].includes(ext);
 
@@ -355,8 +433,9 @@
     function abrirContextMenu(x, y, sobreCard) {
       const menu = document.getElementById('contextMenu');
       document.getElementById('menuTopActions').style.display = sobreCard ? 'flex' : 'none';
-      document.getElementById('btnAbrir').style.display = sobreCard ? 'flex' : 'none';
-      document.getElementById('btnNovaAba').style.display = sobreCard ? 'flex' : 'none';
+      document.getElementById('btnAbrir').style.display = (sobreCard && !emLixeira) ? 'flex' : 'none';
+      document.getElementById('btnNovaAba').style.display = (sobreCard && !emLixeira) ? 'flex' : 'none';
+      document.getElementById('btnRestaurar').style.display = (sobreCard && emLixeira) ? 'flex' : 'none';
       
       menu.style.display = 'block';
       menu.style.left = `${Math.min(x, window.innerWidth - 230)}px`;
@@ -364,18 +443,18 @@
     }
 
     function recortarItem() {
-      if (!itemSelecionado) return;
+      if (!itemSelecionado || emLixeira) return;
       itemTransferencia = { ...itemSelecionado, action: 'cut' };
       itemSelecionado.el.classList.add('cut-mode');
     }
 
     function copiarItem() {
-      if (!itemSelecionado) return;
+      if (!itemSelecionado || emLixeira) return;
       itemTransferencia = { ...itemSelecionado, action: 'copy' };
     }
 
     async function colarItem() {
-      if (!itemTransferencia) return;
+      if (!itemTransferencia || emLixeira) return;
       let destinoUrl = pastaAtual + encodeURIComponent(itemTransferencia.name);
       try {
         await fetch(itemTransferencia.url, {
@@ -388,22 +467,54 @@
       }
     }
 
-    async function deletarSelecionado() {
+    /* Mover para a Lixeira / Deletar */
+    function deletarSelecionado() {
       if (!itemSelecionado) return;
-      if (confirm(`Excluir "${itemSelecionado.name}"?`)) {
-        await fetch(itemSelecionado.url, { method: 'DELETE' });
+      
+      if (emLixeira) {
+        if (confirm(`Excluir definitivamente "${itemSelecionado.name}"?`)) {
+          let lixeira = obterLixeira().filter(i => i.url !== itemSelecionado.url);
+          salvarLixeira(lixeira);
+          abrirLixeira();
+        }
+      } else {
+        let lixeira = obterLixeira();
+        let ext = itemSelecionado.isFolder ? 'folder' : itemSelecionado.name.split('.').pop().toLowerCase();
+        lixeira.push({
+          name: itemSelecionado.name,
+          url: itemSelecionado.url,
+          isFolder: itemSelecionado.isFolder,
+          ext: ext,
+          originalFolder: pastaAtual
+        });
+        salvarLixeira(lixeira);
         carregarArquivos(pastaAtual);
       }
     }
 
+    function restaurarItemLixeira() {
+      if (!itemSelecionado || !emLixeira) return;
+      let lixeira = obterLixeira().filter(i => i.url !== itemSelecionado.url);
+      salvarLixeira(lixeira);
+      abrirLixeira();
+    }
+
+    function esvaziarLixeiraDefinitivo() {
+      if (confirm('Tem certeza que deseja esvaziar a lixeira permanentemente?')) {
+        salvarLixeira([]);
+        abrirLixeira();
+      }
+    }
+
     function renomearSelecionado() {
-      if (!itemSelecionado) return;
+      if (!itemSelecionado || emLixeira) return;
       const nameEl = itemSelecionado.el.querySelector('.file-name');
       ativarEdicaoNome(null, nameEl, itemSelecionado.url, itemSelecionado.name);
     }
 
     function ativarEdicaoNome(e, el, urlAntiga, nomeAntigo) {
       if (e) e.stopPropagation();
+      if (emLixeira) return;
       el.setAttribute('contenteditable', 'true');
       el.focus();
       el.onblur = async () => {
@@ -422,9 +533,8 @@
       if (e.key === 'Escape') fecharPlayerVideo();
     }
 
-    function abrirNovaAba() { if (itemSelecionado) window.open(itemSelecionado.url, '_blank'); }
+    function abrirNovaAba() { if (itemSelecionado && !emLixeira) window.open(itemSelecionado.url, '_blank'); }
     function copiarLink() { if (itemSelecionado) navigator.clipboard.writeText(itemSelecionado.url); }
-    function verPropriedades() { if (itemSelecionado) alert(`Nome: ${itemSelecionado.name}\nURL: ${itemSelecionado.url}`); }
     function resetarNavegacao() { carregarArquivos(SERVIDOR_BASE); }
 
     window.onload = () => carregarArquivos(SERVIDOR_BASE);
