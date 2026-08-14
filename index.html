@@ -18,7 +18,7 @@
     
     #main { flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; position: relative; }
     
-    /* Toolbar e Barra de Navegação Estilo Windows 11 (Imagem 3) */
+    /* Toolbar e Barra de Navegação Estilo Windows 11 */
     .address-bar-container { display: flex; align-items: center; gap: 8px; background: #252525; padding: 6px 12px; border-radius: 8px; border: 1px solid #333; }
     
     .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #aaa; background: #1e1e1e; padding: 6px 12px; border-radius: 6px; border: 1px solid #333; flex: 1; overflow-x: auto; }
@@ -87,13 +87,13 @@
   </div>
 
   <div id="main">
-    <!-- Barra Superior com Voltar e Estrutura de Pastas estilo Windows (Imagem 2 e 3) -->
+    <!-- Barra Superior com Voltar e Navegação -->
     <div class="address-bar-container">
       <button id="btnVoltar" class="btn-tool" onclick="voltarPasta()">⬅ Voltar</button>
       <div id="breadcrumb" class="breadcrumb"></div>
     </div>
 
-    <!-- Barra de Opções de Visualização/Classificação -->
+    <!-- Barra de Opções -->
     <div class="toolbar-actions" id="toolbarActions">
       <button class="btn-tool" id="btnEsvaziarLixeira" style="display:none; color: #ff6b6b;" onclick="esvaziarLixeiraDefinitivo()">🗑️ Esvaziar Lixeira</button>
       <div style="flex:1;"></div>
@@ -134,7 +134,7 @@
     <video id="mainVideoPlayer" controls autoplay></video>
   </div>
 
-  <!-- Menu de Contexto (Botão Direito) -->
+  <!-- Menu de Contexto -->
   <div id="contextMenu">
     <div class="menu-top-actions" id="menuTopActions">
       <button class="menu-top-btn" title="Recortar" onclick="recortarItem()">✂️</button>
@@ -175,7 +175,6 @@
     let ordemDirecao = 'asc';
     let listaArquivosAtual = [];
 
-    // Gerenciamento da Lixeira em LocalStorage
     function obterLixeira() {
       return JSON.parse(localStorage.getItem('lixeira_drive') || '[]');
     }
@@ -232,6 +231,10 @@
         const lixeira = obterLixeira();
         listaArquivosAtual = [];
 
+        // Descobre quais são as pastas superiores para ocultá-las do grid
+        const pathClean = pastaAtual.replace(SERVIDOR_BASE, '');
+        const partesPai = pathClean.split('/').filter(Boolean);
+
         links.forEach(a => {
           let href = a.getAttribute('href');
           let name = a.innerText.trim() || href;
@@ -239,10 +242,16 @@
 
           let isFolder = href.endsWith('/');
           let cleanName = decodeURIComponent(href.split('/').filter(Boolean).pop() || name);
+
+          // FILTRO 1: Remove o acesso/exibição da pasta 'files'
+          if (cleanName.toLowerCase() === 'files') return;
+
+          // FILTRO 2: Oculta pastas pai que correspondem à navegação anterior
+          if (isFolder && partesPai.includes(cleanName)) return;
+
           let ext = isFolder ? 'folder' : (cleanName.split('.').pop().toLowerCase() || 'file');
           let fullUrl = href.startsWith('http') ? href : new URL(href, targetUrl).href;
 
-          // Se não estiver na lixeira, exibe
           if (!lixeira.some(l => l.url === fullUrl)) {
             listaArquivosAtual.push({ name: cleanName, url: fullUrl, isFolder, ext, originalFolder: pastaAtual });
           }
@@ -255,7 +264,6 @@
       }
     }
 
-    /* Lixeira */
     function abrirLixeira() {
       emLixeira = true;
       itemSelecionado = null;
@@ -272,7 +280,6 @@
       document.getElementById(id).classList.add('active');
     }
 
-    /* Atualizador da Barra de Endereço (Breadcrumb) - Imagem 2 & 3 */
     function atualizarBreadcrumb() {
       const breadcrumb = document.getElementById('breadcrumb');
       const pathClean = pastaAtual.replace(SERVIDOR_BASE, '');
@@ -282,6 +289,7 @@
       let urlAcumulada = SERVIDOR_BASE;
 
       partes.forEach((p) => {
+        if (p.toLowerCase() === 'files') return; // Oculta 'files' da barra superior
         urlAcumulada += p + '/';
         let target = urlAcumulada;
         html += `<span class="crumb-separator">❯</span>`;
@@ -467,7 +475,6 @@
       }
     }
 
-    /* Mover para a Lixeira / Deletar */
     function deletarSelecionado() {
       if (!itemSelecionado) return;
       
