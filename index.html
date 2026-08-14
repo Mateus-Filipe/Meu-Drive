@@ -281,7 +281,7 @@
       }
     }
 
-    /* SISTEMA DE UPLOAD */
+    /* SISTEMA DE UPLOAD MULTI-MÉTODO */
     async function fazerUpload(files, destino = pastaAtual) {
       if (!files || files.length === 0) return;
       let target = destino.endsWith('/') ? destino : destino + '/';
@@ -289,15 +289,31 @@
       for (let i = 0; i < files.length; i++) {
         let file = files[i];
         document.getElementById('status').innerText = `Enviando (${i+1}/${files.length}): ${file.name}...`;
+        let enviouSucesso = false;
+
+        // Tentativa 1: POST via Form-Data (Requisitado por servidores Android)
         try {
-          let uploadUrl = target + encodeURIComponent(file.name);
-          await fetch(uploadUrl, { method: 'PUT', body: file });
-        } catch (err) {
-          console.error('Erro no upload:', err);
+          let formData = new FormData();
+          formData.append('file', file, file.name);
+          let res = await fetch(target, { method: 'POST', body: formData });
+          if (res.ok) enviouSucesso = true;
+        } catch (e) {
+          console.warn('POST falhou, tentando PUT...', e);
+        }
+
+        // Tentativa 2: PUT Direto
+        if (!enviouSucesso) {
+          try {
+            let uploadUrl = target + encodeURIComponent(file.name);
+            let res = await fetch(uploadUrl, { method: 'PUT', body: file });
+            if (res.ok) enviouSucesso = true;
+          } catch (err) {
+            console.error('Erro no upload PUT:', err);
+          }
         }
       }
-      document.getElementById('status').innerText = 'Upload concluído com sucesso!';
-      carregarArquivos(pastaAtual);
+      document.getElementById('status').innerText = 'Upload concluído!';
+      setTimeout(() => carregarArquivos(pastaAtual), 1000);
     }
 
     /* ARRASTAR E SOLTAR (DRAG & DROP) ENTRE PASTAS */
@@ -324,7 +340,7 @@
       e.stopPropagation();
       if (el) el.classList.remove('drag-over-target');
 
-      // Se for um arquivo vindo do PC
+      // Se for arquivo vindo do PC
       if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
         fazerUpload(e.dataTransfer.files, targetPastaUrl);
         return;
@@ -350,7 +366,7 @@
         document.getElementById('status').innerText = 'Item movido!';
         carregarArquivos(pastaAtual);
       } catch(err) {
-        document.getElementById('status').innerText = 'Erro ao mover item: ' + err.message;
+        document.getElementById('status').innerText = 'Aviso: O app servidor da TV Box não aceita o comando de mover arquivos (MOVE).';
       }
     }
 
@@ -682,7 +698,7 @@
     function copiarLink() { if (itemSelecionado) navigator.clipboard.writeText(itemSelecionado.url); }
     function resetarNavegacao() { carregarArquivos(SERVIDOR_BASE); }
 
-    // Configurar evento de Drag & Drop global para Upload do PC
+    // Eventos Globais de Drag and Drop para Upload de Arquivos
     window.onload = () => {
       atualizarSidebarFavoritos();
       carregarArquivos(SERVIDOR_BASE);
