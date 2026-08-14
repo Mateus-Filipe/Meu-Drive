@@ -214,7 +214,7 @@
     async function carregarArquivos(targetUrl) {
       emLixeira = false;
       
-      // Normaliza pasta atual com '/' no final
+      // Normaliza pasta atual para ter sempre a barra no final
       pastaAtual = targetUrl.endsWith('/') ? targetUrl : targetUrl + '/';
       itemSelecionado = null;
       atualizarSidebarActive('btnHome');
@@ -233,33 +233,40 @@
         const lixeira = obterLixeira();
         listaArquivosAtual = [];
 
+        // Prepara caminho absoluto da pasta atual para comparação rigorosa
+        const urlAtualObj = new URL(pastaAtual);
+        const pathAtualCanonical = urlAtualObj.pathname;
+
         links.forEach(a => {
           let href = a.getAttribute('href');
           let name = a.innerText.trim() || href;
           if (!href || href === '#' || href === '../' || name === 'Parent Directory') return;
 
-          let fullUrl = href.startsWith('http') ? href : new URL(href, pastaAtual).href;
+          // Resolve a URL completa
+          let absoluteUrlObj = new URL(href, pastaAtual);
+          let targetPath = absoluteUrlObj.pathname;
 
-          // FILTRO 1: Remove o acesso à pasta 'files'
-          if (fullUrl === SERVIDOR_BASE || fullUrl.replace(/\/$/, '') === SERVIDOR_BASE.replace(/\/$/, '')) return;
+          // 1. REGRAS DE SEGURANÇA E NAVEGAÇÃO SUPERIOR:
+          // O item deve estar ESTRITAMENTE DENTRO da pasta atual.
+          if (!targetPath.startsWith(pathAtualCanonical) || targetPath === pathAtualCanonical) return;
 
-          // FILTRO 2: REGRA RÍGIDA DE DIRETÓRIO FILHO
-          // Só aceita itens cujo caminho comece com 'pastaAtual' E que não apontem para pastas superiores
-          if (!fullUrl.startsWith(pastaAtual) || fullUrl === pastaAtual) return;
+          // Descobre o caminho relativo a partir do diretório atual
+          let relPath = targetPath.substring(pathAtualCanonical.length);
+          let partes = relPath.split('/').filter(Boolean);
 
-          // Garante que só pegue itens do nível atual (sem sub-subpastas de uma só vez)
-          let caminhoRelativo = fullUrl.substring(pastaAtual.length);
-          let partesRelativas = caminhoRelativo.split('/').filter(Boolean);
-          if (partesRelativas.length > 1) return; 
+          // Se tiver mais de 1 parte, é um sub-subdiretório (não deve listar direto aqui)
+          if (partes.length > 1) return;
 
-          let isFolder = fullUrl.endsWith('/');
-          let cleanName = decodeURIComponent(partesRelativas[0] || name);
-          
+          let cleanName = decodeURIComponent(partes[0] || name);
+
+          // 2. FILTRAR A PASTA 'files' E PASTA PAI
           if (cleanName.toLowerCase() === 'files') return;
 
+          let fullUrl = absoluteUrlObj.href;
+          let isFolder = fullUrl.endsWith('/');
           let ext = isFolder ? 'folder' : (cleanName.split('.').pop().toLowerCase() || 'file');
 
-          // Filtra se já está na Lixeira
+          // 3. FILTRAR SE ESTÁ NA LIXEIRA
           if (!lixeira.some(l => l.url === fullUrl)) {
             listaArquivosAtual.push({ name: cleanName, url: fullUrl, isFolder, ext, originalFolder: pastaAtual });
           }
