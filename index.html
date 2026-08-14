@@ -3,246 +3,429 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Drive TV Box</title>
+  <title>Drive TV Box - Windows Explorer Web</title>
+  
+  <!-- PDF.js para renderizar Miniaturas Reais de PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+
   <style>
-    * { box-sizing: border-box; font-family: 'Segoe UI', Roboto, sans-serif; }
-    body { margin: 0; background-color: #181818; color: #e3e3e3; display: flex; height: 100vh; overflow: hidden; }
-    #sidebar { width: 240px; background: #1e1e1e; padding: 16px; border-right: 1px solid #2d2d2d; display: flex; flex-direction: column; gap: 12px; }
-    .logo { font-size: 18px; font-weight: bold; color: #8ab4f8; margin-bottom: 12px; cursor: pointer; }
-    #main { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+    * { box-sizing: border-box; font-family: 'Segoe UI', Roboto, sans-serif; user-select: none; }
+    body { margin: 0; background-color: #191919; color: #e3e3e3; display: flex; height: 100vh; overflow: hidden; }
     
-    /* Topo & Controles */
-    .top-bar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; background: #222; padding: 10px 16px; border-radius: 8px; border: 1px solid #333; }
-    .nav-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .btn-back { background: #3c4043; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; }
-    .btn-back:hover { background: #5f6368; }
+    #sidebar { width: 220px; background: #202020; padding: 16px; border-right: 1px solid #2d2d2d; display: flex; flex-direction: column; gap: 12px; }
+    .logo { font-size: 16px; font-weight: 600; color: #8ab4f8; cursor: pointer; display: flex; align-items: center; gap: 8px; }
     
-    /* Breadcrumbs Estilo Windows */
-    .breadcrumb { display: flex; align-items: center; gap: 4px; font-size: 13px; color: #aaa; flex-wrap: wrap; }
-    .crumb-item { color: #8ab4f8; cursor: pointer; padding: 2px 6px; border-radius: 4px; }
-    .crumb-item:hover { background: #333; text-decoration: underline; }
-    .crumb-sep { color: #666; }
-
-    /* Seletor de Tamanho */
-    .size-controls { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #aaa; }
-    .btn-size { background: #2d2d2d; color: #ccc; border: 1px solid #444; padding: 4px 8px; border-radius: 4px; cursor: pointer; }
-    .btn-size.active { background: #8ab4f8; color: #000; font-weight: bold; border-color: #8ab4f8; }
-
-    /* Grid com tamanhos dinâmicos */
-    .grid { display: grid; gap: 16px; }
-    .grid.size-sm { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
-    .grid.size-md { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
-    .grid.size-lg { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
-
-    .grid.size-sm .preview-box { height: 80px; }
-    .grid.size-md .preview-box { height: 120px; }
-    .grid.size-lg .preview-box { height: 160px; }
-
-    .card { background: #252525; border-radius: 12px; padding: 12px; border: 1px solid #333; display: flex; flex-direction: column; gap: 8px; text-decoration: none; color: inherit; transition: 0.2s; cursor: pointer; }
-    .card:hover { background: #2d2d2d; border-color: #8ab4f8; }
-    .preview-box { background: #1a1a1a; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
-    .preview-box img, .preview-box video { width: 100%; height: 100%; object-fit: cover; }
-    .file-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #main { flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; position: relative; }
     
-    /* Badges de extensão */
-    .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; width: fit-content; }
-    .badge-folder { background: #3c4043; color: #8ab4f8; }
-    .badge-raw { background: #d32f2f; color: #fff; }
-    .badge-jpg { background: #0b6bcb; color: #fff; }
-    .badge-video { background: #9c27b0; color: #fff; }
-    .badge-pdf { background: #e53935; color: #fff; }
-    .badge-doc { background: #1565c0; color: #fff; }
-    .badge-xls { background: #2e7d32; color: #fff; }
-    .badge-ppt { background: #d84315; color: #fff; }
-    .badge-file { background: #616161; color: #fff; }
+    /* Toolbar estilo Windows 11 */
+    .toolbar { display: flex; align-items: center; justify-content: space-between; background: #252525; padding: 6px 12px; border-radius: 8px; border: 1px solid #333; gap: 12px; }
+    .nav-bar { display: flex; align-items: center; gap: 8px; flex: 1; }
+    .btn-tool { background: transparent; color: #ccc; border: 1px solid transparent; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px; }
+    .btn-tool:hover { background: #333; border-color: #444; }
     
-    #status { font-size: 12px; color: #888; }
+    .dropdown { position: relative; display: inline-block; }
+    .dropdown-menu { display: none; position: absolute; top: 100%; right: 0; background: #2c2c2c; border: 1px solid #454545; border-radius: 8px; min-width: 180px; box-shadow: 0 8px 16px rgba(0,0,0,0.5); z-index: 500; padding: 6px 0; font-size: 13px; }
+    .dropdown-menu.show { display: block; }
+    .dropdown-item { padding: 8px 16px; cursor: pointer; display: flex; align-items: center; gap: 10px; color: #eee; }
+    .dropdown-item:hover { background: #3a3a3a; }
+
+    .breadcrumb { display: flex; align-items: center; gap: 4px; font-size: 13px; color: #aaa; background: #1e1e1e; padding: 6px 12px; border-radius: 6px; border: 1px solid #333; flex: 1; }
+    .crumb-item { color: #8ab4f8; cursor: pointer; }
+    .crumb-item:hover { text-decoration: underline; }
+
+    /* Exibição em Grid (Tamanhos e Layouts) */
+    .grid { display: grid; gap: 12px; }
+    
+    .grid.view-xl { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+    .grid.view-xl .preview-box { height: 160px; }
+
+    .grid.view-lg { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+    .grid.view-lg .preview-box { height: 120px; }
+
+    .grid.view-md { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+    .grid.view-md .preview-box { height: 90px; }
+
+    .grid.view-sm { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
+    .grid.view-sm .preview-box { height: 60px; }
+
+    /* Modos Lista e Detalhes */
+    .grid.view-list, .grid.view-details { display: flex; flex-direction: column; gap: 2px; }
+    .grid.view-list .card, .grid.view-details .card { flex-direction: row; align-items: center; height: 38px; padding: 4px 12px; border-radius: 4px; }
+    .grid.view-list .preview-box, .grid.view-details .preview-box { width: 24px; height: 24px; background: transparent; }
+
+    .card { background: #222; border-radius: 8px; padding: 8px; border: 1px solid #2e2e2e; display: flex; flex-direction: column; gap: 6px; transition: 0.1s; cursor: pointer; position: relative; }
+    .card:hover { background: #2a2a2a; border-color: #8ab4f8; }
+    .card.selected { border-color: #8ab4f8; background: #2b394e; }
+    .card.cut-mode { opacity: 0.4; border-style: dashed; }
+
+    .preview-box { background: #141414; border-radius: 6px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
+    .preview-box img, .preview-box video, .preview-box canvas { width: 100%; height: 100%; object-fit: cover; }
+    
+    .file-name { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; outline: none; }
+    .file-name[contenteditable="true"] { background: #000; border: 1px solid #8ab4f8; white-space: normal; }
+
+    /* Context Menu Windows 11 */
+    #contextMenu { display: none; position: fixed; background: #2c2c2c; border: 1px solid #454545; border-radius: 8px; width: 220px; box-shadow: 0 8px 16px rgba(0,0,0,0.5); z-index: 1000; padding: 6px; font-size: 13px; }
+    .menu-top-actions { display: flex; justify-content: space-around; border-bottom: 1px solid #3d3d3d; padding-bottom: 6px; margin-bottom: 6px; }
+    .menu-top-btn { background: transparent; border: none; color: #eee; padding: 6px; border-radius: 4px; cursor: pointer; font-size: 15px; }
+    .menu-top-btn:hover { background: #3a3a3a; }
+    .menu-item { display: flex; align-items: center; justify-content: space-between; padding: 7px 10px; border-radius: 4px; cursor: pointer; color: #eee; }
+    .menu-item:hover { background: #3a3a3a; }
+    .menu-shortcut { color: #888; font-size: 11px; }
+    .menu-divider { height: 1px; background: #3d3d3d; margin: 4px 0; }
+
+    /* Modal Player de Vídeo */
+    #videoModal { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); z-index: 2000; align-items: center; justify-content: center; flex-direction: column; gap: 12px; }
+    #videoModal video { max-width: 90vw; max-height: 80vh; border-radius: 8px; box-shadow: 0 0 20px rgba(0,0,0,0.8); background: #000; }
+    .close-modal { position: absolute; top: 20px; right: 30px; font-size: 32px; color: #fff; cursor: pointer; }
   </style>
 </head>
-<body>
+<body onclick="fecharMenus()" oncontextmenu="exibirContextMenuFundo(event)" onkeydown="tratarTeclas(event)">
 
   <div id="sidebar">
-    <div class="logo" onclick="resetarNavegacao()">📁 Drive TV Box</div>
-    <div id="info" style="font-size: 12px; color: #888;">Carregando...</div>
+    <div class="logo" onclick="resetarNavegacao()">💻 Este Computador</div>
+    <div id="info" style="font-size: 11px; color: #888;">Pronto</div>
   </div>
 
   <div id="main">
-    <div class="top-bar">
+    <div class="toolbar">
       <div class="nav-bar">
-        <button id="btnVoltar" class="btn-back" onclick="voltarPasta()">⬅ Voltar</button>
+        <button id="btnVoltar" class="btn-tool" onclick="voltarPasta()">⬅ Voltar</button>
         <div id="breadcrumb" class="breadcrumb"></div>
       </div>
-      <div class="size-controls">
-        <span>Tamanho:</span>
-        <button class="btn-size" onclick="alterarTamanho('sm', this)">P</button>
-        <button class="btn-size active" onclick="alterarTamanho('md', this)">M</button>
-        <button class="btn-size" onclick="alterarTamanho('lg', this)">G</button>
+
+      <!-- Classificar -->
+      <div class="dropdown">
+        <button class="btn-tool" onclick="toggleDropdown(event, 'dropSort')">⇅ Classificar ▾</button>
+        <div id="dropSort" class="dropdown-menu">
+          <div class="dropdown-item" onclick="definirOrdenacao('name')">Nome</div>
+          <div class="dropdown-item" onclick="definirOrdenacao('type')">Tipo</div>
+          <div class="menu-divider"></div>
+          <div class="dropdown-item" onclick="definirOrdem('asc')">Ordem Crescente</div>
+          <div class="dropdown-item" onclick="definirOrdem('desc')">Ordem Decrescente</div>
+        </div>
+      </div>
+
+      <!-- Visualizar -->
+      <div class="dropdown">
+        <button class="btn-tool" onclick="toggleDropdown(event, 'dropView')">☰ Visualizar ▾</button>
+        <div id="dropView" class="dropdown-menu">
+          <div class="dropdown-item" onclick="definirVisualizacao('view-xl')">🔲 Ícones extra grandes</div>
+          <div class="dropdown-item" onclick="definirVisualizacao('view-lg')">⏹ Ícones grandes</div>
+          <div class="dropdown-item" onclick="definirVisualizacao('view-md')">◽ Ícones médios</div>
+          <div class="dropdown-item" onclick="definirVisualizacao('view-sm')">▫ Ícones pequenos</div>
+          <div class="menu-divider"></div>
+          <div class="dropdown-item" onclick="definirVisualizacao('view-list')">☰ Lista</div>
+          <div class="dropdown-item" onclick="definirVisualizacao('view-details')">📋 Detalhes</div>
+        </div>
       </div>
     </div>
-    <div id="status">Conectando...</div>
-    <div class="grid size-md" id="gridContent"></div>
+
+    <div id="status" style="font-size: 12px; color: #888;"></div>
+    <div class="grid view-lg" id="gridContent"></div>
+  </div>
+
+  <!-- Modal Player de Vídeo -->
+  <div id="videoModal">
+    <span class="close-modal" onclick="fecharPlayerVideo()">✕</span>
+    <h3 id="videoTitle" style="color: #fff; margin: 0;"></h3>
+    <video id="mainVideoPlayer" controls autoplay></video>
+  </div>
+
+  <!-- Menu de Contexto (Botão Direito) -->
+  <div id="contextMenu">
+    <div class="menu-top-actions" id="menuTopActions">
+      <button class="menu-top-btn" title="Recortar" onclick="recortarItem()">✂️</button>
+      <button class="menu-top-btn" title="Copiar" onclick="copiarItem()">📋</button>
+      <button class="menu-top-btn" title="Renomear" onclick="renomearSelecionado()">✏️</button>
+      <button class="menu-top-btn" title="Excluir" onclick="deletarSelecionado()">🗑️</button>
+    </div>
+    <div class="menu-item" id="btnAbrir" onclick="abrirItemSelecionado()">
+      <span>📂 Abrir</span>
+      <span class="menu-shortcut">Enter</span>
+    </div>
+    <div class="menu-item" id="btnNovaAba" onclick="abrirNovaAba()">
+      <span>↗️ Abrir em nova guia</span>
+    </div>
+    <div class="menu-divider"></div>
+    <div class="menu-item" id="btnColar" onclick="colarItem()">
+      <span>📥 Colar</span>
+      <span class="menu-shortcut">Ctrl+V</span>
+    </div>
+    <div class="menu-divider"></div>
+    <div class="menu-item" onclick="copiarLink()">
+      <span>🔗 Copiar como caminho</span>
+    </div>
+    <div class="menu-item" onclick="verPropriedades()">
+      <span>🛠️ Propriedades</span>
+      <span class="menu-shortcut">Alt+Enter</span>
+    </div>
   </div>
 
   <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
     const SERVIDOR_BASE = 'http://hd-externo.mateus.mooo.com:2101/files/';
     let historicoPastas = [];
     let pastaAtual = SERVIDOR_BASE;
+    let itemSelecionado = null;
+    let itemTransferencia = null;
+    let ordenacaoAtual = 'name';
+    let ordemDirecao = 'asc';
+    let listaArquivosAtual = [];
 
-    function alterarTamanho(tamanho, btn) {
-      const grid = document.getElementById('gridContent');
-      grid.className = `grid size-${tamanho}`;
-      document.querySelectorAll('.btn-size').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
+    function toggleDropdown(e, id) {
+      e.stopPropagation();
+      fecharMenus();
+      document.getElementById(id).classList.toggle('show');
     }
 
-    function atualizarBreadcrumb(targetUrl) {
-      const breadcrumbEl = document.getElementById('breadcrumb');
-      let caminhoRelativo = targetUrl.replace(SERVIDOR_BASE, '');
-      let partes = caminhoRelativo.split('/').filter(Boolean);
-      
-      let html = `<span class="crumb-item" onclick="navegarParaCaminho('${SERVIDOR_BASE}')">Início</span>`;
-      let urlAcumulada = SERVIDOR_BASE;
-
-      partes.forEach((parte, index) => {
-        urlAcumulada += encodeURIComponent(parte) + '/';
-        let nomeLimpo = decodeURIComponent(parte);
-        html += `<span class="crumb-sep">></span>`;
-        html += `<span class="crumb-item" onclick="navegarParaCaminho('${urlAcumulada}')">${nomeLimpo}</span>`;
-      });
-
-      breadcrumbEl.innerHTML = html;
+    function fecharMenus() {
+      document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('show'));
+      document.getElementById('contextMenu').style.display = 'none';
     }
 
-    function navegarParaCaminho(url) {
-      historicoPastas.push(pastaAtual);
-      carregarArquivos(url);
+    function definirVisualizacao(modo) {
+      document.getElementById('gridContent').className = `grid ${modo}`;
+      fecharMenus();
+    }
+
+    function definirOrdenacao(criterio) {
+      ordenacaoAtual = criterio;
+      renderizarGrid();
+      fecharMenus();
+    }
+
+    function definirOrdem(dir) {
+      ordemDirecao = dir;
+      renderizarGrid();
+      fecharMenus();
     }
 
     async function carregarArquivos(targetUrl) {
-      const statusEl = document.getElementById('status');
-      const infoEl = document.getElementById('info');
-      const gridEl = document.getElementById('gridContent');
-      const btnVoltar = document.getElementById('btnVoltar');
-
       pastaAtual = targetUrl;
-      btnVoltar.style.display = historicoPastas.length > 0 ? 'block' : 'none';
-      atualizarBreadcrumb(targetUrl);
-
-      statusEl.innerText = 'Carregando arquivos...';
-      gridEl.innerHTML = '';
+      itemSelecionado = null;
+      document.getElementById('status').innerText = 'Carregando...';
 
       try {
         const response = await fetch(targetUrl);
-        if (!response.ok) throw new Error(`Status ${response.status}`);
-
         const htmlText = await response.text();
         const parser = new DOMParser();
         const doc = parser.parseFromString(htmlText, 'text/html');
         const links = Array.from(doc.querySelectorAll('a'));
 
-        const items = [];
+        listaArquivosAtual = [];
         links.forEach(a => {
           let href = a.getAttribute('href');
           let name = a.innerText.trim() || href;
+          if (!href || href === '#' || href === '../' || name === 'Parent Directory') return;
 
-          if (!href || href === '#' || href.startsWith('javascript:') || href === '../' || name === 'Parent Directory' || name === 'Home') return;
-
-          let isFolder = href.endsWith('/') || (!href.split('/').pop().includes('.') && !href.includes('?'));
+          let isFolder = href.endsWith('/');
           let cleanName = decodeURIComponent(href.split('/').filter(Boolean).pop() || name);
           let ext = isFolder ? 'folder' : (cleanName.split('.').pop().toLowerCase() || 'file');
-
           let fullUrl = href.startsWith('http') ? href : new URL(href, targetUrl).href;
 
-          items.push({ name: cleanName, url: fullUrl, isFolder: isFolder, ext: ext });
+          listaArquivosAtual.push({ name: cleanName, url: fullUrl, isFolder, ext });
         });
 
-        if (items.length === 0) {
-          statusEl.innerText = 'Pasta vazia.';
-          infoEl.innerText = '0 itens';
-          return;
-        }
-
-        statusEl.innerText = '';
-        infoEl.innerText = `${items.length} itens`;
-
-        gridEl.innerHTML = items.map(item => {
-          let badgeClass = 'badge-file';
-          let badgeText = item.ext.toUpperCase();
-          
-          let isRaw = ['cr2', 'cr3', 'crm', 'nef', 'arw', 'dng'].includes(item.ext);
-          let isImg = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(item.ext) || isRaw;
-          let isVid = ['mp4', 'mkv', 'webm', 'avi', 'mov'].includes(item.ext);
-          let isPdf = item.ext === 'pdf';
-          let isDoc = ['doc', 'docx'].includes(item.ext);
-          let isXls = ['xls', 'xlsx', 'csv'].includes(item.ext);
-          let isPpt = ['ppt', 'pptx'].includes(item.ext);
-
-          if (item.isFolder) { badgeClass = 'badge-folder'; badgeText = 'PASTA'; }
-          else if (isRaw) { badgeClass = 'badge-raw'; }
-          else if (isVid) { badgeClass = 'badge-video'; }
-          else if (isPdf) { badgeClass = 'badge-pdf'; }
-          else if (isDoc) { badgeClass = 'badge-doc'; }
-          else if (isXls) { badgeClass = 'badge-xls'; }
-          else if (isPpt) { badgeClass = 'badge-ppt'; }
-          else if (isImg) { badgeClass = 'badge-jpg'; }
-
-          let previewContent = '';
-          if (item.isFolder) {
-            previewContent = `<span style="font-size: 36px;">📁</span>`;
-          } else if (isVid) {
-            previewContent = `<video src="${item.url}" preload="metadata" muted></video>`;
-          } else if (isImg) {
-            previewContent = `<img src="${item.url}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='block';"><span style="display:none; font-size:12px; color:#aaa;">📷 ${item.ext.toUpperCase()}</span>`;
-          } else if (isPdf) {
-            previewContent = `<span style="font-size: 32px;">📕</span>`;
-          } else if (isDoc) {
-            previewContent = `<span style="font-size: 32px;">📘</span>`;
-          } else if (isXls) {
-            previewContent = `<span style="font-size: 32px;">📗</span>`;
-          } else if (isPpt) {
-            previewContent = `<span style="font-size: 32px;">📙</span>`;
-          } else {
-            previewContent = `<span style="font-size: 28px;">📄</span>`;
-          }
-
-          if (item.isFolder) {
-            return `
-              <div class="card" onclick="abrirPasta('${item.url}')">
-                <div class="preview-box">${previewContent}</div>
-                <div class="file-name" title="${item.name}">${item.name}</div>
-                <span class="badge ${badgeClass}">${badgeText}</span>
-              </div>`;
-          } else {
-            return `
-              <a href="${item.url}" target="_blank" class="card">
-                <div class="preview-box">${previewContent}</div>
-                <div class="file-name" title="${item.name}">${item.name}</div>
-                <span class="badge ${badgeClass}">${badgeText}</span>
-              </a>`;
-          }
-        }).join('');
-
+        document.getElementById('status').innerText = '';
+        renderizarGrid();
       } catch (err) {
-        statusEl.innerHTML = `<b style="color: #ff8888;">Erro ao acessar:</b> ${err.message}`;
+        document.getElementById('status').innerText = 'Erro de conexão: ' + err.message;
       }
     }
 
-    function abrirPasta(novaUrl) {
-      historicoPastas.push(pastaAtual);
-      carregarArquivos(novaUrl);
+    function renderizarGrid() {
+      const gridEl = document.getElementById('gridContent');
+      
+      listaArquivosAtual.sort((a, b) => {
+        if (a.isFolder && !b.isFolder) return -1;
+        if (!a.isFolder && b.isFolder) return 1;
+        let res = a.name.localeCompare(b.name);
+        return ordemDirecao === 'asc' ? res : -res;
+      });
+
+      gridEl.innerHTML = listaArquivosAtual.map((item, idx) => {
+        let isVid = ['mp4', 'mkv', 'webm', 'mov', 'avi'].includes(item.ext);
+        let isImg = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(item.ext);
+        let isPdf = item.ext === 'pdf';
+        let isDoc = ['doc', 'docx'].includes(item.ext);
+        let isXls = ['xls', 'xlsx'].includes(item.ext);
+        let isPpt = ['ppt', 'pptx'].includes(item.ext);
+
+        let icon = '📄';
+        if (item.isFolder) icon = '📁';
+        else if (isPdf) icon = '📕';
+        else if (isDoc) icon = '📘';
+        else if (isXls) icon = '📗';
+        else if (isPpt) icon = '📙';
+
+        return `
+          <div class="card" id="card-${idx}" draggable="true" ondragstart="iniciarDragDownload(event, '${item.url}', '${item.name}')"
+               onclick="selecionarCard(event, '${item.url}', ${item.isFolder}, '${item.name}', this)"
+               ondblclick="executarAbrir('${item.url}', ${item.isFolder}, '${item.name}')"
+               oncontextmenu="exibirContextMenuCard(event, '${item.url}', ${item.isFolder}, '${item.name}', this)">
+            <div class="preview-box" id="prev-${idx}">
+              ${isImg ? `<img src="${item.url}" loading="lazy" draggable="true">` : ''}
+              ${isVid ? `<video src="${item.url}" preload="metadata"></video>` : ''}
+              ${!isImg && !isVid ? `<span style="font-size:32px">${icon}</span>` : ''}
+            </div>
+            <div class="file-name" id="name-${idx}" ondblclick="ativarEdicaoNome(event, this, '${item.url}', '${item.name}')">${item.name}</div>
+          </div>`;
+      }).join('');
+
+      listaArquivosAtual.forEach((item, idx) => {
+        if (item.ext === 'pdf') renderizarThumbnailPDF(item.url, `prev-${idx}`);
+      });
     }
 
-    function voltarPasta() {
-      if (historicoPastas.length > 0) {
-        const pastaAnterior = historicoPastas.pop();
-        carregarArquivos(pastaAnterior);
+    /* Arrastar para Baixar Direct no PC */
+    function iniciarDragDownload(e, url, filename) {
+      e.dataTransfer.setData('DownloadURL', `application/octet-stream:${filename}:${url}`);
+    }
+
+    async function renderizarThumbnailPDF(url, elementId) {
+      try {
+        const loadingTask = pdfjsLib.getDocument(url);
+        const pdf = await loadingTask.promise;
+        const page = await pdf.getPage(1);
+        const viewport = page.getViewport({ scale: 0.3 });
+
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        await page.render({ canvasContext: context, viewport: viewport }).promise;
+        const box = document.getElementById(elementId);
+        if (box) { box.innerHTML = ''; box.appendChild(canvas); }
+      } catch (e) {}
+    }
+
+    function selecionarCard(e, url, isFolder, name, cardEl) {
+      if (e) e.stopPropagation();
+      document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
+      cardEl.classList.add('selected');
+      itemSelecionado = { url, isFolder, name, el: cardEl };
+    }
+
+    function abrirPlayerVideo(url, title) {
+      const modal = document.getElementById('videoModal');
+      const player = document.getElementById('mainVideoPlayer');
+      document.getElementById('videoTitle').innerText = title;
+      player.src = url;
+      modal.style.display = 'flex';
+    }
+
+    function fecharPlayerVideo() {
+      const modal = document.getElementById('videoModal');
+      const player = document.getElementById('mainVideoPlayer');
+      player.pause();
+      player.src = '';
+      modal.style.display = 'none';
+    }
+
+    function executarAbrir(url, isFolder, name) {
+      let ext = name ? name.split('.').pop().toLowerCase() : '';
+      let isVid = ['mp4', 'mkv', 'webm', 'mov', 'avi'].includes(ext);
+
+      if (isFolder) carregarArquivos(url);
+      else if (isVid) abrirPlayerVideo(url, name);
+      else window.open(url, '_blank');
+    }
+
+    function abrirItemSelecionado() {
+      if (itemSelecionado) executarAbrir(itemSelecionado.url, itemSelecionado.isFolder, itemSelecionado.name);
+    }
+
+    function exibirContextMenuCard(e, url, isFolder, name, cardEl) {
+      e.preventDefault();
+      e.stopPropagation();
+      selecionarCard(e, url, isFolder, name, cardEl);
+      abrirContextMenu(e.clientX, e.clientY, true);
+    }
+
+    function exibirContextMenuFundo(e) {
+      e.preventDefault();
+      document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
+      itemSelecionado = null;
+      abrirContextMenu(e.clientX, e.clientY, false);
+    }
+
+    function abrirContextMenu(x, y, sobreCard) {
+      const menu = document.getElementById('contextMenu');
+      document.getElementById('menuTopActions').style.display = sobreCard ? 'flex' : 'none';
+      document.getElementById('btnAbrir').style.display = sobreCard ? 'flex' : 'none';
+      document.getElementById('btnNovaAba').style.display = sobreCard ? 'flex' : 'none';
+      
+      menu.style.display = 'block';
+      menu.style.left = `${Math.min(x, window.innerWidth - 230)}px`;
+      menu.style.top = `${Math.min(y, window.innerHeight - 200)}px`;
+    }
+
+    function recortarItem() {
+      if (!itemSelecionado) return;
+      itemTransferencia = { ...itemSelecionado, action: 'cut' };
+      itemSelecionado.el.classList.add('cut-mode');
+    }
+
+    function copiarItem() {
+      if (!itemSelecionado) return;
+      itemTransferencia = { ...itemSelecionado, action: 'copy' };
+    }
+
+    async function colarItem() {
+      if (!itemTransferencia) return;
+      let destinoUrl = pastaAtual + encodeURIComponent(itemTransferencia.name);
+      try {
+        await fetch(itemTransferencia.url, {
+          method: itemTransferencia.action === 'cut' ? 'MOVE' : 'COPY',
+          headers: { 'Destination': destinoUrl }
+        });
+        carregarArquivos(pastaAtual);
+      } catch {
+        alert('Operação não suportada diretamente pelo navegador.');
       }
     }
 
-    function resetarNavegacao() {
-      historicoPastas = [];
-      carregarArquivos(SERVIDOR_BASE);
+    async function deletarSelecionado() {
+      if (!itemSelecionado) return;
+      if (confirm(`Excluir "${itemSelecionado.name}"?`)) {
+        await fetch(itemSelecionado.url, { method: 'DELETE' });
+        carregarArquivos(pastaAtual);
+      }
     }
+
+    function renomearSelecionado() {
+      if (!itemSelecionado) return;
+      const nameEl = itemSelecionado.el.querySelector('.file-name');
+      ativarEdicaoNome(null, nameEl, itemSelecionado.url, itemSelecionado.name);
+    }
+
+    function ativarEdicaoNome(e, el, urlAntiga, nomeAntigo) {
+      if (e) e.stopPropagation();
+      el.setAttribute('contenteditable', 'true');
+      el.focus();
+      el.onblur = async () => {
+        el.setAttribute('contenteditable', 'false');
+        let novoNome = el.innerText.trim();
+        if (novoNome && novoNome !== nomeAntigo) {
+          let urlNova = urlAntiga.replace(encodeURIComponent(nomeAntigo), encodeURIComponent(novoNome));
+          await fetch(urlAntiga, { method: 'MOVE', headers: { 'Destination': urlNova } });
+          carregarArquivos(pastaAtual);
+        }
+      };
+    }
+
+    function tratarTeclas(e) {
+      if (e.key === 'Delete' && itemSelecionado) deletarSelecionado();
+      if (e.key === 'Escape') fecharPlayerVideo();
+    }
+
+    function abrirNovaAba() { if (itemSelecionado) window.open(itemSelecionado.url, '_blank'); }
+    function copiarLink() { if (itemSelecionado) navigator.clipboard.writeText(itemSelecionado.url); }
+    function verPropriedades() { if (itemSelecionado) alert(`Nome: ${itemSelecionado.name}\nURL: ${itemSelecionado.url}`); }
+    function resetarNavegacao() { carregarArquivos(SERVIDOR_BASE); }
 
     window.onload = () => carregarArquivos(SERVIDOR_BASE);
   </script>
