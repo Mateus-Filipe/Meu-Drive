@@ -213,7 +213,9 @@
 
     async function carregarArquivos(targetUrl) {
       emLixeira = false;
-      pastaAtual = targetUrl;
+      
+      // Normaliza pasta atual com '/' no final
+      pastaAtual = targetUrl.endsWith('/') ? targetUrl : targetUrl + '/';
       itemSelecionado = null;
       atualizarSidebarActive('btnHome');
       document.getElementById('btnEsvaziarLixeira').style.display = 'none';
@@ -222,7 +224,7 @@
       atualizarBreadcrumb();
 
       try {
-        const response = await fetch(targetUrl);
+        const response = await fetch(pastaAtual);
         const htmlText = await response.text();
         const parser = new DOMParser();
         const doc = parser.parseFromString(htmlText, 'text/html');
@@ -231,27 +233,33 @@
         const lixeira = obterLixeira();
         listaArquivosAtual = [];
 
-        // Descobre quais são as pastas superiores para ocultá-las do grid
-        const pathClean = pastaAtual.replace(SERVIDOR_BASE, '');
-        const partesPai = pathClean.split('/').filter(Boolean);
-
         links.forEach(a => {
           let href = a.getAttribute('href');
           let name = a.innerText.trim() || href;
           if (!href || href === '#' || href === '../' || name === 'Parent Directory') return;
 
-          let isFolder = href.endsWith('/');
-          let cleanName = decodeURIComponent(href.split('/').filter(Boolean).pop() || name);
+          let fullUrl = href.startsWith('http') ? href : new URL(href, pastaAtual).href;
 
-          // FILTRO 1: Remove o acesso/exibição da pasta 'files'
+          // FILTRO 1: Remove o acesso à pasta 'files'
+          if (fullUrl === SERVIDOR_BASE || fullUrl.replace(/\/$/, '') === SERVIDOR_BASE.replace(/\/$/, '')) return;
+
+          // FILTRO 2: REGRA RÍGIDA DE DIRETÓRIO FILHO
+          // Só aceita itens cujo caminho comece com 'pastaAtual' E que não apontem para pastas superiores
+          if (!fullUrl.startsWith(pastaAtual) || fullUrl === pastaAtual) return;
+
+          // Garante que só pegue itens do nível atual (sem sub-subpastas de uma só vez)
+          let caminhoRelativo = fullUrl.substring(pastaAtual.length);
+          let partesRelativas = caminhoRelativo.split('/').filter(Boolean);
+          if (partesRelativas.length > 1) return; 
+
+          let isFolder = fullUrl.endsWith('/');
+          let cleanName = decodeURIComponent(partesRelativas[0] || name);
+          
           if (cleanName.toLowerCase() === 'files') return;
 
-          // FILTRO 2: Oculta pastas pai que correspondem à navegação anterior
-          if (isFolder && partesPai.includes(cleanName)) return;
-
           let ext = isFolder ? 'folder' : (cleanName.split('.').pop().toLowerCase() || 'file');
-          let fullUrl = href.startsWith('http') ? href : new URL(href, targetUrl).href;
 
+          // Filtra se já está na Lixeira
           if (!lixeira.some(l => l.url === fullUrl)) {
             listaArquivosAtual.push({ name: cleanName, url: fullUrl, isFolder, ext, originalFolder: pastaAtual });
           }
@@ -289,7 +297,7 @@
       let urlAcumulada = SERVIDOR_BASE;
 
       partes.forEach((p) => {
-        if (p.toLowerCase() === 'files') return; // Oculta 'files' da barra superior
+        if (p.toLowerCase() === 'files') return;
         urlAcumulada += p + '/';
         let target = urlAcumulada;
         html += `<span class="crumb-separator">❯</span>`;
