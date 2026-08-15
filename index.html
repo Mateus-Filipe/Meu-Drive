@@ -5,257 +5,251 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gerenciador de Arquivos - TV Box</title>
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            user-select: none;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; user-select: none; }
+        body { background-color: #191919; color: #ffffff; display: flex; height: 100vh; overflow: hidden; }
 
-        body {
-            background-color: #191919;
-            color: #ffffff;
-            display: flex;
-            height: 100vh;
-            overflow: hidden;
-        }
+        .sidebar { width: 230px; background-color: #202020; border-right: 1px solid #2d2d2d; padding: 15px 10px; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; }
+        .menu-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 6px; cursor: pointer; color: #cccccc; font-size: 13px; }
+        .menu-item:hover, .menu-item.active { background-color: #2d2d2d; color: #ffffff; }
 
-        /* BANDEIRA LATERAL (SIDEBAR) */
-        .sidebar {
-            width: 220px;
-            background-color: #202020;
-            border-right: 1px solid #2d2d2d;
-            padding: 15px 10px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
+        .secao-titulo { font-size: 11px; color: #888888; font-weight: bold; margin-top: 15px; margin-bottom: 5px; padding-left: 10px; }
+        .lista-favoritos { display: flex; flex-direction: column; gap: 4px; }
 
-        .menu-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 10px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            color: #cccccc;
-            font-size: 14px;
-        }
+        .main-content { flex: 1; display: flex; flex-direction: column; background-color: #1e1e1e; position: relative; }
+        .toolbar { display: flex; align-items: center; gap: 12px; padding: 12px 20px; background-color: #202020; border-bottom: 1px solid #2d2d2d; }
+        .btn { background-color: #2d2d2d; color: #ffffff; border: 1px solid #3d3d3d; padding: 8px 16px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 13px; }
+        .btn:hover { background-color: #3d3d3d; }
+        .btn-perigo { background-color: #8b0000; border-color: #a00000; }
+        .btn-perigo:hover { background-color: #a00000; }
+        
+        .breadcrumb { flex: 1; background-color: #181818; border: 1px solid #2d2d2d; padding: 8px 12px; border-radius: 6px; font-size: 13px; color: #aaaaaa; }
 
-        .menu-item:hover, .menu-item.active {
-            background-color: #2d2d2d;
-            color: #ffffff;
-        }
+        .grid-container { flex: 1; padding: 20px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); grid-auto-rows: 120px; gap: 15px; }
+        .card-item { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 8px; border-radius: 8px; cursor: pointer; transition: 0.2s; text-align: center; position: relative; }
+        .card-item:hover { background-color: #2d2d2d; }
+        .card-item .icone { font-size: 40px; margin-bottom: 6px; }
+        .card-item img.thumb { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; margin-bottom: 6px; }
+        .card-item .nome { font-size: 12px; color: #dddddd; word-break: break-word; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
-        .secao-titulo {
-            font-size: 11px;
-            color: #888888;
-            font-weight: bold;
-            margin-top: 15px;
-            margin-bottom: 5px;
-            padding-left: 10px;
-        }
+        #context-menu { position: fixed; display: none; background: #2b2b2b; border: 1px solid #3d3d3d; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 1000; width: 170px; padding: 4px 0; }
+        #context-menu div { padding: 8px 12px; font-size: 13px; color: #eee; cursor: pointer; }
+        #context-menu div:hover { background: #0078d4; color: #fff; }
 
-        /* CONTEÚDO PRINCIPAL */
-        .main-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            background-color: #1e1e1e;
-        }
-
-        /* BARRA DE FERRAMENTAS SUPERIOR */
-        .toolbar {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px 20px;
-            background-color: #202020;
-            border-bottom: 1px solid #2d2d2d;
-        }
-
-        .btn {
-            background-color: #2d2d2d;
-            color: #ffffff;
-            border: 1px solid #3d3d3d;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 13px;
-            transition: 0.2s;
-        }
-
-        .btn:hover {
-            background-color: #3d3d3d;
-            border-color: #5d5d5d;
-        }
-
-        .breadcrumb {
-            flex: 1;
-            background-color: #181818;
-            border: 1px solid #2d2d2d;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 13px;
-            color: #aaaaaa;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        /* ÁREA DE EXIBIÇÃO DAS PASTAS/ARQUIVOS */
-        .grid-container {
-            flex: 1;
-            padding: 20px;
-            overflow-y: auto;
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-            grid-auto-rows: 110px;
-            gap: 15px;
-        }
-
-        .card-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 10px;
-            border-radius: 8px;
-            background-color: transparent;
-            cursor: pointer;
-            transition: 0.2s;
-            text-align: center;
-        }
-
-        .card-item:hover {
-            background-color: #2d2d2d;
-        }
-
-        .card-item .icone {
-            font-size: 40px;
-            margin-bottom: 6px;
-        }
-
-        .card-item .nome {
-            font-size: 12px;
-            color: #dddddd;
-            word-break: break-word;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-
-        .mensagem-status {
-            grid-column: 1 / -1;
-            color: #888888;
-            font-size: 14px;
-            text-align: center;
-            margin-top: 40px;
-        }
+        .mensagem-status { grid-column: 1 / -1; color: #888888; font-size: 14px; text-align: center; margin-top: 40px; }
     </style>
 </head>
-<body>
+<body onclick="fecharMenuContexto()">
 
-    <!-- BARRA LATERAL -->
     <div class="sidebar">
-        <div class="menu-item active" onclick="carregarArquivos('')">
-            💻 Este Computador
-        </div>
-        <div class="menu-item">
-            🗑️ Lixeira
-        </div>
-
+        <div class="menu-item active" id="btn-home" onclick="carregarArquivos('')">💻 Este Computador</div>
+        <div class="menu-item" id="btn-lixeira" onclick="carregarArquivos('.LIXEIRA_TVBOX')">🗑️ Lixeira</div>
+        
         <div class="secao-titulo">FAVORITOS</div>
-        <div style="font-size: 12px; color: #666; padding-left: 10px;">Nenhum favorito</div>
+        <div class="lista-favoritos" id="lista-favoritos"></div>
     </div>
 
-    <!-- ÁREA PRINCIPAL -->
     <div class="main-content">
-        <!-- BARRA SUPERIOR -->
         <div class="toolbar">
             <button class="btn" onclick="voltar()">← Voltar</button>
             <div class="breadcrumb" id="breadcrumb">💻 Este Computador</div>
             
-            <button class="btn" onclick="document.getElementById('file-input').click()">
-                📤 Upload
-            </button>
+            <button class="btn" id="btn-upload" onclick="document.getElementById('file-input').click()">📤 Upload</button>
+            <button class="btn btn-perigo" id="btn-esvaziar-lixeira" style="display: none;" onclick="esvaziarLixeira()">🧹 Esvaziar Lixeira</button>
+            
             <input type="file" id="file-input" style="display: none;" onchange="enviarArquivo(this.files)">
         </div>
 
-        <!-- REGRID DE ARQUIVOS/PASTAS -->
         <div class="grid-container" id="grid-arquivos">
-            <div class="mensagem-status">Conectando à TV Box...</div>
+            <div class="mensagem-status">Conectando...</div>
         </div>
     </div>
 
+    <!-- PAINEL DO BOTÃO DIREITO -->
+    <div id="context-menu"></div>
+
     <script>
-        // ================= CONFIGURAÇÃO DO SEU IP =================
-        const IP_PONTE = "192.168.15.26";  // <--- DIGITE O IP DO SEU CELULAR/PC (ONDE RODA O PYDROID 3)
+        const IP_PONTE = "192.168.15.XX"; // DIGITE O IP DO PYDROID 3
         const PORTA_PONTE = "2101";
-        // ==========================================================
 
         let caminhoAtual = "";
+        let itemSelecionado = null;
 
-        function getBaseUrl() {
-            return `http://${IP_PONTE}:${PORTA_PONTE}`;
-        }
+        function getBaseUrl() { return `http://${IP_PONTE}:${PORTA_PONTE}`; }
 
-        // 📂 BUSCAR E EXIBIR ARQUIVOS DA TV BOX
         async function carregarArquivos(caminho = '') {
             caminhoAtual = caminho;
-            atualizarBreadcrumb();
-
+            atualizarInterface();
+            
             const grid = document.getElementById('grid-arquivos');
-            grid.innerHTML = '<div class="mensagem-status">Carregando conteúdo...</div>';
+            grid.innerHTML = '<div class="mensagem-status">Carregando...</div>';
 
             try {
-                const resposta = await fetch(`${getBaseUrl()}/${caminho}`);
-                const resultado = await resposta.json();
+                const res = await fetch(`${getBaseUrl()}/${caminho}`);
+                const data = await res.json();
 
-                if (resultado.status === "sucesso") {
+                if (data.status === "sucesso") {
                     grid.innerHTML = '';
-
-                    if (!resultado.dados || resultado.dados.length === 0) {
+                    if (!data.dados || data.dados.length === 0) {
                         grid.innerHTML = '<div class="mensagem-status">Esta pasta está vazia.</div>';
                         return;
                     }
 
-                    resultado.dados.forEach(item => {
+                    data.dados.forEach(item => {
                         const card = document.createElement('div');
                         card.className = 'card-item';
+                        
+                        const itemPath = caminhoAtual ? `${caminhoAtual}/${item.nome}` : item.nome;
+                        const ext = item.nome.split('.').pop().toLowerCase();
+                        const eImagem = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
 
-                        const icone = item.isDir ? '📁' : '📄';
-                        card.innerHTML = `
-                            <div class="icone">${icone}</div>
-                            <div class="nome" title="${item.nome}">${item.nome}</div>
-                        `;
-
-                        // Clique na pasta para entrar
-                        if (item.isDir) {
-                            card.onclick = () => {
-                                const novoCaminho = caminhoAtual 
-                                    ? `${caminhoAtual}/${item.nome}` 
-                                    : item.nome;
-                                carregarArquivos(novoCaminho);
-                            };
+                        if (!item.isDir && eImagem) {
+                            card.innerHTML = `<img class="thumb" src="${getBaseUrl()}/${itemPath}" alt=""><div class="nome">${item.nome}</div>`;
+                        } else {
+                            const icone = item.isDir ? '📁' : '📄';
+                            card.innerHTML = `<div class="icone">${icone}</div><div class="nome">${item.nome}</div>`;
                         }
+
+                        card.onclick = (e) => {
+                            e.stopPropagation();
+                            if (item.isDir) carregarArquivos(itemPath);
+                            else window.open(`${getBaseUrl()}/${itemPath}`, '_blank');
+                        };
+
+                        card.oncontextmenu = (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            itemSelecionado = { ...item, path: itemPath };
+                            abrirMenuContexto(e.clientX, e.clientY);
+                        };
 
                         grid.appendChild(card);
                     });
-                } else {
-                    grid.innerHTML = `<div class="mensagem-status" style="color: #ff5555;">Erro: ${resultado.mensagem}</div>`;
                 }
-            } catch (erro) {
-                grid.innerHTML = `<div class="mensagem-status" style="color: #ff5555;">Erro de conexão com a Ponte Python!<br>Verifique se o Pydroid 3 está rodando no IP ${IP_PONTE}.</div>`;
+            } catch (err) {
+                grid.innerHTML = `<div class="mensagem-status" style="color:#ff5555;">Erro de conexão com a Ponte Python!</div>`;
             }
         }
 
-        // ⬅️ BOTÃO VOLTAR PASTA
+        function abrirMenuContexto(x, y) {
+            const menu = document.getElementById('context-menu');
+            const naLixeira = caminhoAtual.startsWith('.LIXEIRA_TVBOX');
+
+            if (naLixeira) {
+                menu.innerHTML = `
+                    <div onclick="acaoContexto('restaurar')">↩️ Restaurar</div>
+                    <div onclick="acaoContexto('excluir_definitivo')" style="color: #ff6b6b;">❌ Excluir Definitivamente</div>
+                `;
+            } else {
+                menu.innerHTML = `
+                    <div onclick="acaoContexto('abrir')">📂 Abrir</div>
+                    <div onclick="acaoContexto('favoritar')">⭐ Favoritar</div>
+                    <div onclick="acaoContexto('baixar')">⬇️ Baixar</div>
+                    <div onclick="acaoContexto('mover_lixeira')" style="color: #ff6b6b;">🗑️ Mover para a Lixeira</div>
+                `;
+            }
+
+            menu.style.left = `${x}px`;
+            menu.style.top = `${y}px`;
+            menu.style.display = 'block';
+        }
+
+        function fecharMenuContexto() {
+            document.getElementById('context-menu').style.display = 'none';
+        }
+
+        async function acaoContexto(tipo) {
+            if (!itemSelecionado) return;
+            const url = `${getBaseUrl()}/${itemSelecionado.path}`;
+
+            if (tipo === 'abrir') {
+                if (itemSelecionado.isDir) carregarArquivos(itemSelecionado.path);
+                else window.open(url, '_blank');
+            } else if (tipo === 'favoritar') {
+                salvarFavorito(itemSelecionado);
+            } else if (tipo === 'baixar') {
+                window.open(url, '_blank');
+            } else if (tipo === 'mover_lixeira') {
+                await fetch(url, { method: 'DELETE' });
+                carregarArquivos(caminhoAtual);
+            } else if (tipo === 'excluir_definitivo') {
+                if (confirm(`Excluir "${itemSelecionado.nome}" definitivamente? Esta ação não pode ser desfeita.`)) {
+                    await fetch(url, { method: 'DELETE' });
+                    carregarArquivos(caminhoAtual);
+                }
+            } else if (tipo === 'restaurar') {
+                await fetch(`${getBaseUrl()}/sys/restaurar/${itemSelecionado.nome}`, { method: 'POST' });
+                carregarArquivos(caminhoAtual);
+            }
+            fecharMenuContexto();
+        }
+
+        async function esvaziarLixeira() {
+            if (confirm("Tem certeza que deseja esvaziar a Lixeira? Todos os itens serão apagados permanentemente.")) {
+                await fetch(`${getBaseUrl()}/sys/esvaziar-lixeira`, { method: 'POST' });
+                carregarArquivos('.LIXEIRA_TVBOX');
+            }
+        }
+
+        function atualizarInterface() {
+            const naLixeira = caminhoAtual.startsWith('.LIXEIRA_TVBOX');
+            
+            document.getElementById('btn-home').className = `menu-item ${!naLixeira ? 'active' : ''}`;
+            document.getElementById('btn-lixeira').className = `menu-item ${naLixeira ? 'active' : ''}`;
+
+            document.getElementById('btn-upload').style.display = naLixeira ? 'none' : 'flex';
+            document.getElementById('btn-esvaziar-lixeira').style.display = naLixeira ? 'flex' : 'none';
+
+            const breadcrumb = document.getElementById('breadcrumb');
+            if (naLixeira) {
+                breadcrumb.innerText = '🗑️ Lixeira';
+            } else if (!caminhoAtual) {
+                breadcrumb.innerText = '💻 Este Computador';
+            } else {
+                breadcrumb.innerText = `💻 Este Computador / ${caminhoAtual.replace(/\//g, ' / ')}`;
+            }
+        }
+
+        function getFavoritos() { return JSON.parse(localStorage.getItem('tvbox_favoritos') || '[]'); }
+
+        function salvarFavorito(item) {
+            let favs = getFavoritos();
+            if (!favs.some(f => f.path === item.path)) {
+                favs.push(item);
+                localStorage.setItem('tvbox_favoritos', JSON.stringify(favs));
+                renderizarFavoritos();
+            }
+        }
+
+        function removerFavorito(path) {
+            let favs = getFavoritos().filter(f => f.path !== path);
+            localStorage.setItem('tvbox_favoritos', JSON.stringify(favs));
+            renderizarFavoritos();
+        }
+
+        function renderizarFavoritos() {
+            const container = document.getElementById('lista-favoritos');
+            const favs = getFavoritos();
+
+            if (!favs.length) {
+                container.innerHTML = '<div style="font-size: 12px; color: #666; padding-left: 10px;">Nenhum favorito</div>';
+                return;
+            }
+
+            container.innerHTML = '';
+            favs.forEach(fav => {
+                const div = document.createElement('div');
+                div.className = 'menu-item';
+                const icone = fav.isDir ? '📁' : '📄';
+                div.innerHTML = `<span>${icone}</span> <span style="overflow:hidden; text-overflow:ellipsis;">${fav.nome}</span>`;
+                div.onclick = () => fav.isDir ? carregarArquivos(fav.path) : window.open(`${getBaseUrl()}/${fav.path}`, '_blank');
+                div.oncontextmenu = (e) => {
+                    e.preventDefault();
+                    if (confirm(`Remover "${fav.nome}" dos favoritos?`)) removerFavorito(fav.path);
+                };
+                container.appendChild(div);
+            });
+        }
+
         function voltar() {
             if (!caminhoAtual) return;
             const partes = caminhoAtual.split('/');
@@ -263,51 +257,18 @@
             carregarArquivos(partes.join('/'));
         }
 
-        // 📌 ATUALIZAR BARRA DE ENDEREÇO
-        function atualizarBreadcrumb() {
-            const el = document.getElementById('breadcrumb');
-            if (!caminhoAtual) {
-                el.innerText = '💻 Este Computador';
-            } else {
-                el.innerText = `💻 Este Computador / ${caminhoAtual.replace(/\//g, ' / ')}`;
-            }
-        }
-
-        // 📤 ENVIAR ARQUIVO (UPLOAD HTTP PUT ➔ FTP STOR)
         async function enviarArquivo(files) {
-            if (!files || files.length === 0) return;
-
-            const arquivo = files[0];
-            const destinoUrl = caminhoAtual 
-                ? `${getBaseUrl()}/${caminhoAtual}/${arquivo.name}` 
-                : `${getBaseUrl()}/${arquivo.name}`;
-
-            const grid = document.getElementById('grid-arquivos');
-            grid.innerHTML = `<div class="mensagem-status">Enviando "${arquivo.name}" para o HD da TV Box...</div>`;
-
-            try {
-                const resposta = await fetch(destinoUrl, {
-                    method: 'PUT',
-                    body: arquivo
-                });
-
-                if (resposta.ok) {
-                    alert('✅ Upload concluído com sucesso!');
-                    carregarArquivos(caminhoAtual);
-                } else {
-                    alert('❌ Falha ao enviar o arquivo.');
-                    carregarArquivos(caminhoAtual);
-                }
-            } catch (erro) {
-                alert('❌ Erro na ponte de upload: ' + erro.message);
-                carregarArquivos(caminhoAtual);
-            }
-            
-            document.getElementById('file-input').value = '';
+            if (!files.length) return;
+            const file = files[0];
+            const url = caminhoAtual ? `${getBaseUrl()}/${caminhoAtual}/${file.name}` : `${getBaseUrl()}/${file.name}`;
+            await fetch(url, { method: 'PUT', body: file });
+            carregarArquivos(caminhoAtual);
         }
 
-        // Inicia carregando o diretório raiz ao abrir a página
-        window.onload = () => carregarArquivos('');
+        window.onload = () => {
+            renderizarFavoritos();
+            carregarArquivos('');
+        };
     </script>
 </body>
 </html>
