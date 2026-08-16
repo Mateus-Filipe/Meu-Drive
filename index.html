@@ -31,7 +31,7 @@
         .breadcrumb { flex: 1; background-color: #181818; border: 1px solid #2d2d2d; padding: 6px 12px; border-radius: 6px; font-size: 13px; color: #aaaaaa; display: flex; align-items: center; gap: 6px; overflow-x: auto; white-space: nowrap; }
         .crumb-link { color: #569cd6; cursor: pointer; text-decoration: none; }
 
-        .grid-container { flex: 1; padding: 20px; overflow-y: auto; display: grid; gap: 12px; align-content: start; position: relative; }
+        .grid-container { flex: 1; padding: 20px; overflow-y: auto; display: grid; gap: 12px; align-content: start; position: relative; min-height: 200px; }
         
         .view-extra-large { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
         .view-extra-large .card-item { height: 180px; }
@@ -58,21 +58,18 @@
         .card-item.selected { background-color: #094771 !important; border-color: #0078d4 !important; }
         .card-item.drag-over-folder { border: 2px dashed #0078d4 !important; background-color: #1c3b52 !important; }
 
-        .thumb-box { display: flex; align-items: center; justify-content: center; font-size: 32px; overflow: hidden; border-radius: 4px; }
-        .thumb-box img, .thumb-box canvas { width: 100%; height: 100%; object-fit: cover; }
+        .thumb-box { display: flex; align-items: center; justify-content: center; font-size: 32px; overflow: hidden; border-radius: 4px; background: #181818; position: relative; }
+        .thumb-box img, .thumb-box canvas, .thumb-box video { width: 100%; height: 100%; object-fit: cover; }
 
         .nome { font-size: 12px; color: #dddddd; word-break: break-word; margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
-        /* CAIXA DE SELEÇÃO ESTILO WINDOWS */
         #selection-box { position: absolute; border: 1px dashed #0078d4; background: rgba(0, 120, 212, 0.25); pointer-events: none; display: none; z-index: 100; }
 
-        /* MODAIS */
         .modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 2000; }
         .modal-content { position: relative; width: 80%; max-width: 900px; background: #222; border-radius: 8px; overflow: hidden; padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 15px; }
-        .modal-content media, .modal-content img, .modal-content video { max-width: 100%; max-height: 75vh; border-radius: 6px; }
         .close-modal { position: absolute; top: 10px; right: 15px; color: #fff; font-size: 24px; cursor: pointer; z-index: 2001; }
 
-        #context-menu { position: fixed; display: none; background: #2b2b2b; border: 1px solid #3d3d3d; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 1000; width: 180px; padding: 4px 0; }
+        #context-menu { position: fixed; display: none; background: #2b2b2b; border: 1px solid #3d3d3d; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 1000; width: 190px; padding: 4px 0; }
         #context-menu div { padding: 8px 12px; font-size: 13px; color: #eee; cursor: pointer; }
         #context-menu div:hover { background: #0078d4; color: #fff; }
         .drop-active { border: 2px dashed #0078d4 !important; background-color: #252526 !important; }
@@ -100,10 +97,9 @@
             <button class="btn" onclick="carregarArquivos(caminhoAtual)" title="Recarregar pasta">🔄 Recarregar</button>
             <div class="breadcrumb" id="breadcrumb">💻 Este Computador</div>
 
-            <button class="btn" id="btn-add-fav" onclick="adicionarFavoritoAtual()">⭐ Fixar Pasta</button>
+            <button class="btn" id="btn-add-fav" onclick="adicionarFavoritoPath(caminhoAtual)">⭐ Fixar Pasta</button>
             <button class="btn" id="btn-toggle-manual" onclick="toggleModoManual()">📌 Org. Manual: OFF</button>
 
-            <!-- CLASSIFICAR -->
             <div class="btn" onclick="toggleDropdown('dropdown-classificar', event)">
                 ⇅ Classificar ▾
                 <div class="dropdown-menu" id="dropdown-classificar">
@@ -115,7 +111,6 @@
                 </div>
             </div>
 
-            <!-- EXIBIR -->
             <div class="btn" onclick="toggleDropdown('dropdown-exibir', event)">
                 ☰ Exibir ▾
                 <div class="dropdown-menu" id="dropdown-exibir">
@@ -142,7 +137,7 @@
         <div id="selection-box"></div>
     </div>
 
-    <!-- MODAL POPUP PARA SELEÇÃO DE ABERTURA MÍDIA -->
+    <!-- MODAL POPUP MÍDIA -->
     <div class="modal" id="media-choice-modal">
         <div class="modal-content" style="max-width: 400px; text-align: center;">
             <span class="close-modal" onclick="fecharModalMedia()">&times;</span>
@@ -153,7 +148,7 @@
         </div>
     </div>
 
-    <!-- MODAL POPUP PLAYER -->
+    <!-- MODAL PLAYER -->
     <div class="modal" id="player-modal">
         <div class="modal-content">
             <span class="close-modal" onclick="fecharPlayer()">&times;</span>
@@ -237,6 +232,7 @@
                 card.className = `card-item ${itensSelecionados.has(item.nome) ? 'selected' : ''}`;
                 card.draggable = true;
                 card.dataset.nome = item.nome;
+                card.dataset.isdir = item.isDir;
                 
                 const itemPath = caminhoAtual ? `${caminhoAtual}/${item.nome}` : item.nome;
                 const ext = item.nome.split('.').pop().toLowerCase();
@@ -249,6 +245,25 @@
                     thumbBox.innerHTML = '📁';
                 } else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
                     thumbBox.innerHTML = `<img src="${itemUrl}" onerror="this.replaceWith('🖼️')">`;
+                } else if (['mp4', 'mov', 'mkv', 'webm', 'avi'].includes(ext)) {
+                    // GERAR THUMBNAIL DE VÍDEO
+                    const video = document.createElement('video');
+                    video.src = `${itemUrl}#t=0.5`;
+                    video.preload = 'metadata';
+                    video.muted = true;
+                    thumbBox.appendChild(video);
+                } else if (ext === 'pdf') {
+                    // GERAR THUMBNAIL DE PDF
+                    const canvas = document.createElement('canvas');
+                    thumbBox.appendChild(canvas);
+                    pdfjsLib.getDocument(itemUrl).promise.then(pdf => {
+                        pdf.getPage(1).then(page => {
+                            const viewport = page.getViewport({ scale: 0.3 });
+                            canvas.height = viewport.height;
+                            canvas.width = viewport.width;
+                            page.render({ canvasContext: canvas.getContext('2d'), viewport });
+                        });
+                    }).catch(() => thumbBox.innerHTML = '📄');
                 } else {
                     thumbBox.innerHTML = '📄';
                 }
@@ -260,7 +275,6 @@
                 card.appendChild(thumbBox);
                 card.appendChild(nomeEl);
 
-                // SELEÇÃO UM POR UM
                 card.onclick = (e) => {
                     e.stopPropagation();
                     if (e.ctrlKey || e.metaKey) {
@@ -273,12 +287,11 @@
                     atualizarSelecaoVisual();
                 };
 
-                // DUPLO CLIQUE PARA MÍDIAS / PASTAS
                 card.ondblclick = (e) => {
                     e.stopPropagation();
                     if (item.isDir) {
                         carregarArquivos(itemPath);
-                    } else if (['mp4', 'mov', 'mkv', 'avi', 'jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
+                    } else if (['mp4', 'mov', 'mkv', 'webm', 'avi', 'jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
                         itemMidiaPendente = { url: itemUrl, ext, nome: item.nome };
                         document.getElementById('media-nome-label').innerText = item.nome;
                         document.getElementById('media-choice-modal').style.display = 'flex';
@@ -294,10 +307,9 @@
                         itensSelecionados.add(item.nome);
                         atualizarSelecaoVisual();
                     }
-                    abrirMenuContexto(e.clientX, e.clientY);
+                    abrirMenuContexto(e.clientX, e.clientY, item);
                 };
 
-                // DRAG & DROP LOGIC
                 card.ondragstart = (e) => {
                     arrastadoIndex = index;
                     e.dataTransfer.setData('text/plain', JSON.stringify({ ...item, path: itemPath }));
@@ -335,6 +347,32 @@
             });
         }
 
+        // CLIQUE DIREITO EM ÁREA VAZIA DA PASTA (ITEM 9)
+        document.getElementById('grid-arquivos').oncontextmenu = (e) => {
+            if (e.target.id === 'grid-arquivos' || e.target.classList.contains('grid-container')) {
+                e.preventDefault();
+                itensSelecionados.clear();
+                atualizarSelecaoVisual();
+                abrirMenuAreaVazia(e.clientX, e.clientY);
+            }
+        };
+
+        function abrirMenuAreaVazia(x, y) {
+            const menu = document.getElementById('context-menu');
+            let html = `
+                <div onclick="criarNovaPasta()">📁 Nova Pasta</div>
+                <div onclick="document.getElementById('file-input').click()">📤 Upload de Arquivos</div>
+            `;
+            if (itemRecortado) {
+                html += `<div onclick="acaoColar()">📋 Colar Aqui</div>`;
+            }
+            html += `<div onclick="carregarArquivos(caminhoAtual)">🔄 Recarregar</div>`;
+            
+            menu.innerHTML = html;
+            menu.style.left = `${x}px`; menu.style.top = `${y}px`;
+            menu.style.display = 'block';
+        }
+
         function atualizarSelecaoVisual() {
             document.querySelectorAll('.card-item').forEach(card => {
                 if (itensSelecionados.has(card.dataset.nome)) card.classList.add('selected');
@@ -342,13 +380,13 @@
             });
         }
 
-        // CAIXA DE SELEÇÃO ARRASTANDO O MOUSE (ITEM 7 & 8)
+        // ARRASTAR CAIXA DE SELEÇÃO AZUL
         const gridBox = document.getElementById('grid-arquivos');
         const selBox = document.getElementById('selection-box');
         let isSelecting = false, startX = 0, startY = 0;
 
         gridBox.onmousedown = (e) => {
-            if (e.target !== gridBox && e.target.parentElement !== gridBox) return;
+            if (e.target !== gridBox && !e.target.classList.contains('grid-container')) return;
             isSelecting = true;
             const rect = gridBox.getBoundingClientRect();
             startX = e.clientX - rect.left + gridBox.scrollLeft;
@@ -379,7 +417,6 @@
             selBox.style.width = `${width}px`;
             selBox.style.height = `${height}px`;
 
-            // DETECTA QUAIS CARDS ESTÃO DENTRO DA CAIXA
             document.querySelectorAll('.card-item').forEach(card => {
                 const cRect = {
                     left: card.offsetLeft,
@@ -402,7 +439,7 @@
             }
         };
 
-        // ABRIR MÍDIAS (ITEM 6)
+        // ABRIR MÍDIA
         function fecharModalMedia() { document.getElementById('media-choice-modal').style.display = 'none'; }
 
         function abrirMidiaSelecao(tipo) {
@@ -413,7 +450,7 @@
                 window.open(itemMidiaPendente.url, '_blank');
             } else {
                 const container = document.getElementById('player-container');
-                if (['mp4', 'mov', 'mkv', 'avi'].includes(itemMidiaPendente.ext)) {
+                if (['mp4', 'mov', 'mkv', 'webm', 'avi'].includes(itemMidiaPendente.ext)) {
                     container.innerHTML = `<video src="${itemMidiaPendente.url}" controls autoplay style="width:100%; max-height:80vh;"></video>`;
                 } else {
                     container.innerHTML = `<img src="${itemMidiaPendente.url}" style="max-width:100%; max-height:80vh; object-fit:contain;">`;
@@ -436,7 +473,20 @@
             carregarArquivos(caminhoAtual);
         }
 
-        // FAVORITOS PERSISTENTES
+        async function criarNovaPasta() {
+            const nome = prompt("Nome da nova pasta:");
+            if (nome) {
+                const caminho = caminhoAtual ? `${caminhoAtual}/${nome}` : nome;
+                await fetch(`${getBaseUrl()}/sys/criar-pasta`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ caminho })
+                });
+                carregarArquivos(caminhoAtual);
+            }
+        }
+
+        // FAVORITOS
         function carregarFavoritos() {
             const favs = JSON.parse(localStorage.getItem('fav_paths') || '[]');
             const container = document.getElementById('favoritos-lista');
@@ -455,11 +505,11 @@
             });
         }
 
-        function adicionarFavoritoAtual() {
-            if (!caminhoAtual) return alert("Você já está na raiz.");
+        function adicionarFavoritoPath(path) {
+            if (!path) return alert("Você já está na raiz.");
             let favs = JSON.parse(localStorage.getItem('fav_paths') || '[]');
-            if (!favs.includes(caminhoAtual)) {
-                favs.push(caminhoAtual);
+            if (!favs.includes(path)) {
+                favs.push(path);
                 localStorage.setItem('fav_paths', JSON.stringify(favs));
                 carregarFavoritos();
             }
@@ -473,8 +523,8 @@
             carregarFavoritos();
         }
 
-        // MENU DE CONTEXTO
-        function abrirMenuContexto(x, y) {
+        // MENU DE CONTEXTO COM FAVORITAR (ITEM 8)
+        function abrirMenuContexto(x, y, item) {
             const menu = document.getElementById('context-menu');
             const naLixeira = caminhoAtual.startsWith('.LIXEIRA_TVBOX');
 
@@ -484,10 +534,14 @@
                     <div onclick="acaoExcluirDefinitivo()" style="color: #ff6b6b;">❌ Excluir Definitivamente</div>
                 `;
             } else {
+                const targetPath = caminhoAtual ? `${caminhoAtual}/${item.nome}` : item.nome;
                 let html = `
                     <div onclick="acaoRenomear()">✏️ Renomear</div>
                     <div onclick="acaoRecortar()">✂️ Recortar</div>
                 `;
+                if (item.isDir) {
+                    html += `<div onclick="adicionarFavoritoPath('${targetPath}')">⭐ Fixar nos Favoritos</div>`;
+                }
                 if (itemRecortado) {
                     html += `<div onclick="acaoColar()">📋 Colar Aqui</div>`;
                 }
@@ -507,8 +561,8 @@
 
         async function acaoColar() {
             if (!itemRecortado) return;
-            const de = caminhoAtual ? `${caminhoAtual}/${itemRecortado}` : itemRecortado;
-            const para = caminhoAtual ? `${caminhoAtual}/${itemRecortado}` : itemRecortado;
+            const de = itemRecortado;
+            const para = caminhoAtual ? `${caminhoAtual}/${itemRecortado.split('/').pop()}` : itemRecortado.split('/').pop();
             await moverItem(de, para);
             itemRecortado = null;
         }
@@ -574,7 +628,7 @@
             carregarArquivos('.LIXEIRA_TVBOX');
         }
 
-        // UPLOAD & DRAG/DROP EXTERNO
+        // UPLOAD CORRIGIDO
         const dropZone = document.getElementById('drop-zone');
         dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('drop-active'); };
         dropZone.ondragleave = () => dropZone.classList.remove('drop-active');
