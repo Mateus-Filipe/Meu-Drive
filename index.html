@@ -176,38 +176,6 @@
 
         function getBaseUrl() { return `http://${IP_PONTE}:${PORTA_PONTE}`; }
 
-        // OBSERVER PARA LAZY LOADING DE MINIATURAS (Zero Travamentos)
-        const lazyObserver = new IntersectionObserver((entries, observer) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    const thumbBox = entry.target;
-                    const url = thumbBox.dataset.url;
-                    const ext = thumbBox.dataset.ext;
-
-                    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
-                        const img = document.createElement('img');
-                        img.src = url;
-                        img.onerror = () => thumbBox.innerHTML = '🖼️';
-                        thumbBox.innerHTML = '';
-                        thumbBox.appendChild(img);
-                    } else if (ext === 'pdf') {
-                        const canvas = document.createElement('canvas');
-                        thumbBox.innerHTML = '';
-                        thumbBox.appendChild(canvas);
-                        pdfjsLib.getDocument(url).promise.then(pdf => {
-                            pdf.getPage(1).then(page => {
-                                const viewport = page.getViewport({ scale: 0.3 });
-                                canvas.height = viewport.height;
-                                canvas.width = viewport.width;
-                                page.render({ canvasContext: canvas.getContext('2d'), viewport });
-                            });
-                        }).catch(() => thumbBox.innerHTML = '📕');
-                    }
-                    observer.unobserve(thumbBox);
-                }
-            });
-        }, { root: document.getElementById('grid-arquivos'), rootMargin: '100px' });
-
         function toggleModoManual() {
             modoManual = !modoManual;
             const btn = document.getElementById('btn-toggle-manual');
@@ -222,7 +190,7 @@
             atualizarInterface();
             
             const grid = document.getElementById('grid-arquivos');
-            grid.innerHTML = '<div style="color: #888; text-align: center; width: 100%;">Carregando rapidamente...</div>';
+            grid.innerHTML = '<div style="color: #888; text-align: center; width: 100%;">Carregando...</div>';
 
             try {
                 const targetUrl = `${getBaseUrl()}/${encodeURIComponent(caminho).replace(/%2F/g, '/')}`;
@@ -274,11 +242,21 @@
 
                 if (item.isDir) {
                     thumbBox.innerHTML = '📁';
-                } else if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf'].includes(ext)) {
-                    thumbBox.innerHTML = ext === 'pdf' ? '📕' : '🖼️';
-                    thumbBox.dataset.url = itemUrl;
-                    thumbBox.dataset.ext = ext;
-                    lazyObserver.observe(thumbBox);
+                } else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
+                    thumbBox.innerHTML = `<img src="${itemUrl}" loading="lazy" onerror="this.parentNode.innerHTML='🖼️'">`;
+                } else if (ext === 'pdf') {
+                    thumbBox.innerHTML = '📕';
+                    const canvas = document.createElement('canvas');
+                    pdfjsLib.getDocument(itemUrl).promise.then(pdf => {
+                        pdf.getPage(1).then(page => {
+                            const viewport = page.getViewport({ scale: 0.3 });
+                            canvas.height = viewport.height;
+                            canvas.width = viewport.width;
+                            page.render({ canvasContext: canvas.getContext('2d'), viewport });
+                            thumbBox.innerHTML = '';
+                            thumbBox.appendChild(canvas);
+                        });
+                    }).catch(() => {});
                 } else if (['mp4', 'mov', 'mkv', 'webm', 'avi'].includes(ext)) {
                     thumbBox.innerHTML = '🎬';
                 } else {
