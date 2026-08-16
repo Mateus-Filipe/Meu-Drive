@@ -127,6 +127,104 @@
     .props-body { padding: 16px; display: flex; flex-direction: column; gap: 10px; color: #ccc; }
     .props-row { display: flex; justify-content: space-between; border-bottom: 1px dashed #333; padding-bottom: 4px; }
     .props-footer { padding: 10px; background: #1f1f1f; display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid #333; }
+
+    /* ====================================================
+       MODIFICAÇÕES EXCLUSIVAS PARA MOBILE (TELAS < 768px)
+       ==================================================== */
+    @media (max-width: 768px) {
+      body {
+        flex-direction: column;
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      /* Painel Lateral Compacto no Mobile */
+      #sidebar {
+        width: 100%;
+        max-height: 120px;
+        border-right: none;
+        border-bottom: 1px solid #2d2d2d;
+        padding: 8px 12px;
+        gap: 6px;
+      }
+
+      .sidebar-section-title {
+        margin-top: 4px;
+      }
+
+      #main {
+        padding: 10px;
+        gap: 10px;
+      }
+
+      /* Reorganização das Barras Superiores */
+      .address-bar-container {
+        flex-wrap: wrap;
+        gap: 6px;
+        padding: 6px;
+      }
+
+      .breadcrumb {
+        width: 100%;
+        order: 2;
+      }
+
+      .toolbar-actions {
+        gap: 8px;
+      }
+
+      .search-box-container {
+        min-width: 100%;
+        width: 100%;
+      }
+
+      /* Redimensionamento dos Grids para Telas Menores */
+      .grid.view-xl { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+      .grid.view-xl .preview-box { height: 100px; }
+
+      .grid.view-lg { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
+      .grid.view-lg .preview-box { height: 80px; }
+
+      .grid.view-md { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); }
+      .grid.view-md .preview-box { height: 60px; }
+
+      .grid.view-blocks { grid-template-columns: 1fr; }
+
+      /* Painéis Auxiliares em Pop-up para Mobile */
+      #detailsPanel, #previewPanel {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        max-height: 50vh;
+        z-index: 400;
+        box-shadow: 0 -4px 16px rgba(0,0,0,0.8);
+      }
+
+      /* Caixas de Diálogo Responsivas */
+      #mediaModal {
+        padding: 10px;
+      }
+
+      .props-dialog {
+        width: 92vw;
+        max-width: 380px;
+      }
+
+      /* Ajustes de Toque (Touch Targets) */
+      .btn-tool {
+        padding: 6px 10px;
+        height: 36px;
+      }
+
+      .nav-arrow {
+        padding: 8px 12px;
+        font-size: 18px;
+      }
+      .nav-prev { left: 4px; }
+      .nav-next { right: 4px; }
+    }
   </style>
 </head>
 <body onclick="fecharMenus()" oncontextmenu="exibirContextMenuFundo(event)" onkeydown="tratarTeclas(event)">
