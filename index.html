@@ -27,7 +27,12 @@
     .crumb-item:hover { background: #333; color: #8ab4f8; }
     .crumb-separator { color: #666; font-size: 11px; }
 
-    .toolbar-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .toolbar-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    
+    /* Barra de Pesquisa */
+    .search-box { display: flex; align-items: center; background: #222; border: 1px solid #3d3d3d; border-radius: 6px; padding: 4px 10px; min-width: 220px; }
+    .search-box input { background: transparent; border: none; outline: none; color: #fff; font-size: 13px; width: 100%; margin-left: 6px; }
+
     .btn-tool { background: #282828; color: #ccc; border: 1px solid #3d3d3d; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px; transition: 0.2s; }
     .btn-tool:hover { background: #333; color: #fff; border-color: #8ab4f8; }
     
@@ -55,16 +60,13 @@
     .card { background: #222; border-radius: 8px; padding: 8px; border: 1px solid #2e2e2e; display: flex; flex-direction: column; gap: 6px; transition: 0.1s; cursor: pointer; position: relative; }
     .card:hover { background: #2a2a2a; border-color: #8ab4f8; }
     .card.selected { border-color: #8ab4f8; background: #2b394e; }
-    .card.cut-mode { opacity: 0.4; border-style: dashed; }
 
-    /* Efeitos de Arraste e Solte (Drag Target) */
     .drag-over-target { border: 2px dashed #8ab4f8 !important; background: #2f3e58 !important; }
 
     .preview-box { background: #141414; border-radius: 6px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; pointer-events: none; }
     .preview-box img, .preview-box video, .preview-box canvas { width: 100%; height: 100%; object-fit: cover; }
     
-    .file-name { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; outline: none; }
-    .file-name[contenteditable="true"] { background: #000; border: 1px solid #8ab4f8; white-space: normal; }
+    .file-name { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
     /* Menu de Contexto */
     #contextMenu { display: none; position: fixed; background: #2c2c2c; border: 1px solid #454545; border-radius: 8px; width: 220px; box-shadow: 0 8px 16px rgba(0,0,0,0.5); z-index: 1000; padding: 6px; font-size: 13px; }
@@ -76,10 +78,25 @@
     .menu-shortcut { color: #888; font-size: 11px; }
     .menu-divider { height: 1px; background: #3d3d3d; margin: 4px 0; }
 
-    /* Modal Player de Vídeo */
-    #videoModal { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); z-index: 2000; align-items: center; justify-content: center; flex-direction: column; gap: 12px; }
-    #videoModal video { max-width: 90vw; max-height: 80vh; border-radius: 8px; box-shadow: 0 0 20px rgba(0,0,0,0.8); background: #000; }
-    .close-modal { position: absolute; top: 20px; right: 30px; font-size: 32px; color: #fff; cursor: pointer; }
+    /* Modal do Visualizador Mídia / Pop-up de Arquivos */
+    #mediaModal { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.88); z-index: 2000; flex-direction: column; align-items: center; justify-content: space-between; padding: 20px; box-sizing: border-radius; }
+    .modal-header { width: 100%; display: flex; justify-content: space-between; align-items: center; max-width: 1000px; }
+    .modal-title { font-size: 16px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80%; }
+    .close-modal { font-size: 28px; color: #ccc; cursor: pointer; transition: 0.2s; }
+    .close-modal:hover { color: #ff6b6b; }
+    
+    .modal-body { flex: 1; display: flex; align-items: center; justify-content: center; width: 100%; max-width: 1000px; position: relative; margin: 12px 0; }
+    .modal-body img { max-width: 100%; max-height: 75vh; border-radius: 8px; object-fit: contain; box-shadow: 0 0 25px rgba(0,0,0,0.9); }
+    .modal-body video { max-width: 100%; max-height: 75vh; border-radius: 8px; background: #000; box-shadow: 0 0 25px rgba(0,0,0,0.9); }
+    .modal-body audio { width: 100%; max-width: 500px; }
+    .modal-body pre { width: 100%; max-height: 75vh; background: #111; border: 1px solid #333; color: #8ab4f8; padding: 16px; border-radius: 8px; overflow: auto; font-family: monospace; font-size: 13px; text-align: left; }
+
+    .nav-arrow { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.1); color: #fff; border: none; font-size: 24px; padding: 12px 16px; border-radius: 50%; cursor: pointer; transition: 0.2s; }
+    .nav-arrow:hover { background: rgba(255,255,255,0.3); }
+    .nav-prev { left: -20px; }
+    .nav-next { right: -20px; }
+
+    .modal-footer-toolbar { display: flex; gap: 12px; background: #222; border: 1px solid #333; padding: 8px 16px; border-radius: 30px; }
   </style>
 </head>
 <body onclick="fecharMenus()" oncontextmenu="exibirContextMenuFundo(event)" onkeydown="tratarTeclas(event)">
@@ -104,9 +121,10 @@
 
     <!-- Barra de Opções -->
     <div class="toolbar-actions" id="toolbarActions">
-      <!-- Botão de Upload -->
-      <button class="btn-tool" onclick="document.getElementById('fileUploadInput').click()" title="Fazer Upload de Arquivos">📤 Upload</button>
-      <input type="file" id="fileUploadInput" multiple style="display:none;" onchange="fazerUpload(this.files)">
+      <!-- Barra de Pesquisa -->
+      <div class="search-box">
+        🔍 <input type="text" id="searchInput" placeholder="Pesquisar nesta pasta..." oninput="filtrarArquivos()">
+      </div>
 
       <button class="btn-tool" id="btnEsvaziarLixeira" style="display:none; color: #ff6b6b;" onclick="esvaziarLixeiraDefinitivo()">🗑️ Esvaziar Lixeira</button>
       <div style="flex:1;"></div>
@@ -140,19 +158,35 @@
     <div class="grid view-lg" id="gridContent"></div>
   </div>
 
-  <!-- Player de Vídeo Modal -->
-  <div id="videoModal">
-    <span class="close-modal" onclick="fecharPlayerVideo()">✕</span>
-    <h3 id="videoTitle" style="color: #fff; margin: 0;"></h3>
-    <video id="mainVideoPlayer" controls autoplay></video>
+  <!-- Pop-up Modal Universal para Mídia / Fotos / Vídeos / Áudios / Documentos -->
+  <div id="mediaModal">
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">Nome do Arquivo</div>
+      <span class="close-modal" onclick="fecharModalMedia()">✕</span>
+    </div>
+
+    <div class="modal-body">
+      <button class="nav-arrow nav-prev" id="btnMediaPrev" onclick="navegarMedia(-1)">❮</button>
+      
+      <img id="modalImage" style="display:none;" src="">
+      <video id="modalVideo" style="display:none;" controls autoplay></video>
+      <audio id="modalAudio" style="display:none;" controls autoplay></audio>
+      <pre id="modalText" style="display:none;"></pre>
+
+      <button class="nav-arrow nav-next" id="btnMediaNext" onclick="navegarMedia(1)">❯</button>
+    </div>
+
+    <div class="modal-footer-toolbar">
+      <button class="btn-tool" onclick="baixarItemAtualModal()">📥 Baixar</button>
+      <button class="btn-tool" onclick="abrirAbaItemAtualModal()">↗️ Abrir em nova guia</button>
+      <button class="btn-tool" onclick="copiarLinkItemAtualModal()">🔗 Copiar caminho</button>
+    </div>
   </div>
 
   <!-- Menu de Contexto -->
   <div id="contextMenu">
     <div class="menu-top-actions" id="menuTopActions">
-      <button class="menu-top-btn" title="Recortar" onclick="recortarItem()">✂️</button>
-      <button class="menu-top-btn" title="Copiar" onclick="copiarItem()">📋</button>
-      <button class="menu-top-btn" title="Renomear" onclick="renomearSelecionado()">✏️</button>
+      <button class="menu-top-btn" title="Baixar Arquivo" onclick="baixarSelecionado()">📥</button>
       <button class="menu-top-btn" title="Excluir" onclick="deletarSelecionado()">🗑️</button>
     </div>
     <div class="menu-item" id="btnFavorito" onclick="toggleFavorito()">
@@ -165,13 +199,11 @@
       <span>📂 Abrir</span>
       <span class="menu-shortcut">Enter</span>
     </div>
+    <div class="menu-item" id="btnBaixarContext" onclick="baixarSelecionado()">
+      <span>📥 Baixar arquivo</span>
+    </div>
     <div class="menu-item" id="btnNovaAba" onclick="abrirNovaAba()">
       <span>↗️ Abrir em nova guia</span>
-    </div>
-    <div class="menu-divider"></div>
-    <div class="menu-item" id="btnColar" onclick="colarItem()">
-      <span>📥 Colar</span>
-      <span class="menu-shortcut">Ctrl+V</span>
     </div>
     <div class="menu-divider"></div>
     <div class="menu-item" onclick="copiarLink()">
@@ -186,10 +218,17 @@
     let pastaAtual = SERVIDOR_BASE;
     let emLixeira = false;
     let itemSelecionado = null;
-    let itemTransferencia = null;
     let ordenacaoAtual = 'name';
     let ordemDirecao = 'asc';
     let listaArquivosAtual = [];
+    let listaExibidaAtual = [];
+    let indiceMediaAtual = -1;
+
+    // Extensões Suportadas
+    const EXT_IMG = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'];
+    const EXT_VID = ['mp4', 'mkv', 'webm', 'mov', 'avi'];
+    const EXT_AUD = ['mp3', 'wav', 'ogg', 'aac', 'flac', 'm4a'];
+    const EXT_TXT = ['txt', 'json', 'xml', 'log', 'csv', 'md', 'js', 'css', 'html', 'py', 'php', 'sh'];
 
     // LocalStorage Getters/Setters
     function obterLixeira() { return JSON.parse(localStorage.getItem('lixeira_drive') || '[]'); }
@@ -229,6 +268,7 @@
       emLixeira = false;
       pastaAtual = targetUrl.endsWith('/') ? targetUrl : targetUrl + '/';
       itemSelecionado = null;
+      document.getElementById('searchInput').value = '';
       atualizarSidebarActive('btnHome');
       document.getElementById('btnEsvaziarLixeira').style.display = 'none';
       document.getElementById('status').innerText = 'Carregando...';
@@ -281,42 +321,11 @@
       }
     }
 
-    /* SISTEMA DE UPLOAD MULTI-MÉTODO */
-    async function fazerUpload(files, destino = pastaAtual) {
-      if (!files || files.length === 0) return;
-      let target = destino.endsWith('/') ? destino : destino + '/';
-      
-      for (let i = 0; i < files.length; i++) {
-        let file = files[i];
-        document.getElementById('status').innerText = `Enviando (${i+1}/${files.length}): ${file.name}...`;
-        let enviouSucesso = false;
-
-        // Tentativa 1: POST via Form-Data (Requisitado por servidores Android)
-        try {
-          let formData = new FormData();
-          formData.append('file', file, file.name);
-          let res = await fetch(target, { method: 'POST', body: formData });
-          if (res.ok) enviouSucesso = true;
-        } catch (e) {
-          console.warn('POST falhou, tentando PUT...', e);
-        }
-
-        // Tentativa 2: PUT Direto
-        if (!enviouSucesso) {
-          try {
-            let uploadUrl = target + encodeURIComponent(file.name);
-            let res = await fetch(uploadUrl, { method: 'PUT', body: file });
-            if (res.ok) enviouSucesso = true;
-          } catch (err) {
-            console.error('Erro no upload PUT:', err);
-          }
-        }
-      }
-      document.getElementById('status').innerText = 'Upload concluído!';
-      setTimeout(() => carregarArquivos(pastaAtual), 1000);
+    function filtrarArquivos() {
+      renderizarGrid();
     }
 
-    /* ARRASTAR E SOLTAR (DRAG & DROP) ENTRE PASTAS */
+    /* ARRASTAR E SOLTAR (DRAG & DROP) APENAS ENTRE PASTAS */
     function iniciarDragItem(e, url, isFolder, name) {
       e.dataTransfer.setData('text/plain', JSON.stringify({ url, isFolder, name }));
       e.dataTransfer.effectAllowed = 'move';
@@ -340,12 +349,6 @@
       e.stopPropagation();
       if (el) el.classList.remove('drag-over-target');
 
-      // Se for arquivo vindo do PC
-      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-        fazerUpload(e.dataTransfer.files, targetPastaUrl);
-        return;
-      }
-
       const rawData = e.dataTransfer.getData('text/plain');
       if (!rawData) return;
 
@@ -366,7 +369,7 @@
         document.getElementById('status').innerText = 'Item movido!';
         carregarArquivos(pastaAtual);
       } catch(err) {
-        document.getElementById('status').innerText = 'Aviso: O app servidor da TV Box não aceita o comando de mover arquivos (MOVE).';
+        document.getElementById('status').innerText = 'Aviso: O app servidor da TV Box não aceita mover arquivos via MOVE.';
       }
     }
 
@@ -470,28 +473,29 @@
 
     function renderizarGrid() {
       const gridEl = document.getElementById('gridContent');
+      const filtro = document.getElementById('searchInput').value.toLowerCase().trim();
+
+      listaExibidaAtual = listaArquivosAtual.filter(item => item.name.toLowerCase().includes(filtro));
       
-      listaArquivosAtual.sort((a, b) => {
+      listaExibidaAtual.sort((a, b) => {
         if (a.isFolder && !b.isFolder) return -1;
         if (!a.isFolder && b.isFolder) return 1;
         let res = a.name.localeCompare(b.name);
         return ordemDirecao === 'asc' ? res : -res;
       });
 
-      gridEl.innerHTML = listaArquivosAtual.map((item, idx) => {
-        let isVid = ['mp4', 'mkv', 'webm', 'mov', 'avi'].includes(item.ext);
-        let isImg = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(item.ext);
+      gridEl.innerHTML = listaExibidaAtual.map((item, idx) => {
+        let isVid = EXT_VID.includes(item.ext);
+        let isImg = EXT_IMG.includes(item.ext);
+        let isAud = EXT_AUD.includes(item.ext);
+        let isTxt = EXT_TXT.includes(item.ext);
         let isPdf = item.ext === 'pdf';
-        let isDoc = ['doc', 'docx'].includes(item.ext);
-        let isXls = ['xls', 'xlsx'].includes(item.ext);
-        let isPpt = ['ppt', 'pptx'].includes(item.ext);
 
         let icon = '📄';
         if (item.isFolder) icon = '📁';
         else if (isPdf) icon = '📕';
-        else if (isDoc) icon = '📘';
-        else if (isXls) icon = '📗';
-        else if (isPpt) icon = '📙';
+        else if (isAud) icon = '🎵';
+        else if (isTxt) icon = '📝';
 
         let dragDropPastaAttrs = item.isFolder 
           ? `ondragover="permitirDropPasta(event, this)" ondragleave="sairDropPasta(event, this)" ondrop="soltarEmPasta(event, '${item.url}', this)"` 
@@ -509,11 +513,11 @@
               ${isVid ? `<video src="${item.url}" preload="metadata"></video>` : ''}
               ${!isImg && !isVid ? `<span style="font-size:32px">${icon}</span>` : ''}
             </div>
-            <div class="file-name" id="name-${idx}" ondblclick="ativarEdicaoNome(event, this, '${item.url}', '${item.name}')">${item.name}</div>
+            <div class="file-name" id="name-${idx}">${item.name}</div>
           </div>`;
       }).join('');
 
-      listaArquivosAtual.forEach((item, idx) => {
+      listaExibidaAtual.forEach((item, idx) => {
         if (item.ext === 'pdf') renderizarThumbnailPDF(item.url, `prev-${idx}`);
       });
     }
@@ -543,30 +547,126 @@
       itemSelecionado = { url, isFolder, name, el: cardEl };
     }
 
-    function abrirPlayerVideo(url, title) {
-      const modal = document.getElementById('videoModal');
-      const player = document.getElementById('mainVideoPlayer');
-      document.getElementById('videoTitle').innerText = title;
-      player.src = url;
+    /* POP-UP MODAL VISUALIZADOR DE MÍDIAS & ARQUIVOS */
+    function executarAbrir(url, isFolder, name) {
+      if (emLixeira) return;
+      if (isFolder) {
+        carregarArquivos(url);
+        return;
+      }
+
+      let idx = listaExibidaAtual.findIndex(i => i.url === url);
+      if (idx !== -1) {
+        abrirModalMedia(idx);
+      } else {
+        window.open(url, '_blank');
+      }
+    }
+
+    async function abrirModalMedia(index) {
+      if (index < 0 || index >= listaExibidaAtual.length) return;
+      indiceMediaAtual = index;
+      let item = listaExibidaAtual[index];
+
+      const modal = document.getElementById('mediaModal');
+      const img = document.getElementById('modalImage');
+      const vid = document.getElementById('modalVideo');
+      const aud = document.getElementById('modalAudio');
+      const txt = document.getElementById('modalText');
+
+      document.getElementById('modalTitle').innerText = item.name;
+
+      // Oculta todos
+      img.style.display = 'none'; img.src = '';
+      vid.style.display = 'none'; vid.src = ''; vid.pause();
+      aud.style.display = 'none'; aud.src = ''; aud.pause();
+      txt.style.display = 'none'; txt.innerText = '';
+
+      let ext = item.ext;
+
+      if (EXT_IMG.includes(ext)) {
+        img.src = item.url;
+        img.style.display = 'block';
+      } else if (EXT_VID.includes(ext)) {
+        vid.src = item.url;
+        vid.style.display = 'block';
+      } else if (EXT_AUD.includes(ext)) {
+        aud.src = item.url;
+        aud.style.display = 'block';
+      } else if (EXT_TXT.includes(ext)) {
+        txt.style.display = 'block';
+        txt.innerText = 'Carregando documento...';
+        try {
+          let res = await fetch(item.url);
+          let conteudo = await res.text();
+          txt.innerText = conteudo;
+        } catch {
+          txt.innerText = 'Erro ao carregar o conteúdo do documento.';
+        }
+      } else {
+        window.open(item.url, '_blank');
+        return;
+      }
+
       modal.style.display = 'flex';
     }
 
-    function fecharPlayerVideo() {
-      const modal = document.getElementById('videoModal');
-      const player = document.getElementById('mainVideoPlayer');
-      player.pause();
-      player.src = '';
-      modal.style.display = 'none';
+    function navegarMedia(direcao) {
+      if (indiceMediaAtual === -1) return;
+      let novoIndice = indiceMediaAtual + direcao;
+
+      // Encontrar o próximo item que é arquivo
+      while (novoIndice >= 0 && novoIndice < listaExibidaAtual.length) {
+        if (!listaExibidaAtual[novoIndice].isFolder) {
+          abrirModalMedia(novoIndice);
+          return;
+        }
+        novoIndice += direcao;
+      }
     }
 
-    function executarAbrir(url, isFolder, name) {
-      if (emLixeira) return;
-      let ext = name ? name.split('.').pop().toLowerCase() : '';
-      let isVid = ['mp4', 'mkv', 'webm', 'mov', 'avi'].includes(ext);
+    function fecharModalMedia() {
+      const modal = document.getElementById('mediaModal');
+      document.getElementById('modalVideo').pause();
+      document.getElementById('modalAudio').pause();
+      modal.style.display = 'none';
+      indiceMediaAtual = -1;
+    }
 
-      if (isFolder) carregarArquivos(url);
-      else if (isVid) abrirPlayerVideo(url, name);
-      else window.open(url, '_blank');
+    function baixarItemAtualModal() {
+      if (indiceMediaAtual !== -1) {
+        let item = listaExibidaAtual[indiceMediaAtual];
+        baixarArquivo(item.url, item.name);
+      }
+    }
+
+    function abrirAbaItemAtualModal() {
+      if (indiceMediaAtual !== -1) {
+        window.open(listaExibidaAtual[indiceMediaAtual].url, '_blank');
+      }
+    }
+
+    function copiarLinkItemAtualModal() {
+      if (indiceMediaAtual !== -1) {
+        navigator.clipboard.writeText(listaExibidaAtual[indiceMediaAtual].url);
+        alert('Caminho copiado!');
+      }
+    }
+
+    function baixarArquivo(url, name) {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name || 'download';
+      a.target = '_blank';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    function baixarSelecionado() {
+      if (itemSelecionado && !itemSelecionado.isFolder) {
+        baixarArquivo(itemSelecionado.url, itemSelecionado.name);
+      }
     }
 
     function abrirItemSelecionado() {
@@ -591,6 +691,7 @@
       const menu = document.getElementById('contextMenu');
       document.getElementById('menuTopActions').style.display = sobreCard ? 'flex' : 'none';
       document.getElementById('btnAbrir').style.display = (sobreCard && !emLixeira) ? 'flex' : 'none';
+      document.getElementById('btnBaixarContext').style.display = (sobreCard && !emLixeira && itemSelecionado && !itemSelecionado.isFolder) ? 'flex' : 'none';
       document.getElementById('btnNovaAba').style.display = (sobreCard && !emLixeira) ? 'flex' : 'none';
       document.getElementById('btnRestaurar').style.display = (sobreCard && emLixeira) ? 'flex' : 'none';
       
@@ -602,31 +703,6 @@
       menu.style.display = 'block';
       menu.style.left = `${Math.min(x, window.innerWidth - 230)}px`;
       menu.style.top = `${Math.min(y, window.innerHeight - 200)}px`;
-    }
-
-    function recortarItem() {
-      if (!itemSelecionado || emLixeira) return;
-      itemTransferencia = { ...itemSelecionado, action: 'cut' };
-      itemSelecionado.el.classList.add('cut-mode');
-    }
-
-    function copiarItem() {
-      if (!itemSelecionado || emLixeira) return;
-      itemTransferencia = { ...itemSelecionado, action: 'copy' };
-    }
-
-    async function colarItem() {
-      if (!itemTransferencia || emLixeira) return;
-      let destinoUrl = pastaAtual + encodeURIComponent(itemTransferencia.name);
-      try {
-        await fetch(itemTransferencia.url, {
-          method: itemTransferencia.action === 'cut' ? 'MOVE' : 'COPY',
-          headers: { 'Destination': destinoUrl }
-        });
-        carregarArquivos(pastaAtual);
-      } catch {
-        alert('Operação não suportada diretamente pelo navegador.');
-      }
     }
 
     function deletarSelecionado() {
@@ -667,50 +743,20 @@
       }
     }
 
-    function renomearSelecionado() {
-      if (!itemSelecionado || emLixeira) return;
-      const nameEl = itemSelecionado.el.querySelector('.file-name');
-      ativarEdicaoNome(null, nameEl, itemSelecionado.url, itemSelecionado.name);
-    }
-
-    function ativarEdicaoNome(e, el, urlAntiga, nomeAntigo) {
-      if (e) e.stopPropagation();
-      if (emLixeira) return;
-      el.setAttribute('contenteditable', 'true');
-      el.focus();
-      el.onblur = async () => {
-        el.setAttribute('contenteditable', 'false');
-        let novoNome = el.innerText.trim();
-        if (novoNome && novoNome !== nomeAntigo) {
-          let urlNova = urlAntiga.replace(encodeURIComponent(nomeAntigo), encodeURIComponent(novoNome));
-          await fetch(urlAntiga, { method: 'MOVE', headers: { 'Destination': urlNova } });
-          carregarArquivos(pastaAtual);
-        }
-      };
-    }
-
     function tratarTeclas(e) {
       if (e.key === 'Delete' && itemSelecionado) deletarSelecionado();
-      if (e.key === 'Escape') fecharPlayerVideo();
+      if (e.key === 'Escape') fecharModalMedia();
+      if (e.key === 'ArrowLeft') navegarMedia(-1);
+      if (e.key === 'ArrowRight') navegarMedia(1);
     }
 
     function abrirNovaAba() { if (itemSelecionado && !emLixeira) window.open(itemSelecionado.url, '_blank'); }
-    function copiarLink() { if (itemSelecionado) navigator.clipboard.writeText(itemSelecionado.url); }
+    function copiarLink() { if (itemSelecionado) { navigator.clipboard.writeText(itemSelecionado.url); alert('Caminho copiado!'); } }
     function resetarNavegacao() { carregarArquivos(SERVIDOR_BASE); }
 
-    // Eventos Globais de Drag and Drop para Upload de Arquivos
     window.onload = () => {
       atualizarSidebarFavoritos();
       carregarArquivos(SERVIDOR_BASE);
-
-      const mainEl = document.getElementById('main');
-      mainEl.addEventListener('dragover', (e) => e.preventDefault());
-      mainEl.addEventListener('drop', (e) => {
-        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-          e.preventDefault();
-          fazerUpload(e.dataTransfer.files, pastaAtual);
-        }
-      });
     };
   </script>
 </body>
