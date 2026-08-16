@@ -7,6 +7,8 @@
   
   <!-- PDF.js para renderizar Miniaturas Reais de PDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  <!-- JSZip para compactar múltiplos arquivos em ZIP ao baixar -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
   <style>
     * { box-sizing: border-box; font-family: 'Segoe UI', Roboto, sans-serif; user-select: none; }
@@ -24,7 +26,7 @@
     #main-wrapper { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
     #main { flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; position: relative; }
 
-    /* Caixinha de Seleção por Arraste (Rubberband) */
+    /* Caixinha de Seleção por Arraste */
     #selectionBox { position: absolute; border: 1px solid #8ab4f8; background: rgba(138, 180, 248, 0.2); pointer-events: none; display: none; z-index: 100; }
 
     /* Toolbar e Barra de Navegação Estilo Windows 11 */
@@ -37,9 +39,10 @@
 
     .toolbar-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
     
-    /* Barra de Pesquisa */
-    .search-box { display: flex; align-items: center; background: #222; border: 1px solid #3d3d3d; border-radius: 6px; padding: 4px 10px; min-width: 220px; }
-    .search-box input { background: transparent; border: none; outline: none; color: #fff; font-size: 13px; width: 100%; margin-left: 6px; }
+    /* Barra de Pesquisa com opção de Busca Global */
+    .search-box-container { display: flex; align-items: center; gap: 6px; background: #222; border: 1px solid #3d3d3d; border-radius: 6px; padding: 4px 10px; min-width: 320px; }
+    .search-box-container input { background: transparent; border: none; outline: none; color: #fff; font-size: 13px; width: 100%; }
+    .search-mode-label { font-size: 11px; color: #aaa; display: flex; align-items: center; gap: 4px; cursor: pointer; white-space: nowrap; border-left: 1px solid #444; padding-left: 8px; }
 
     .btn-tool { background: #282828; color: #ccc; border: 1px solid #3d3d3d; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px; transition: 0.2s; height: 32px; }
     .btn-tool:hover { background: #333; color: #fff; border-color: #8ab4f8; }
@@ -50,7 +53,7 @@
     .dropdown-item { padding: 8px 16px; cursor: pointer; display: flex; align-items: center; gap: 10px; color: #eee; }
     .dropdown-item:hover { background: #3a3a3a; }
 
-    /* Exibição em Grid / Modos de Visualização sem esticar */
+    /* Exibição em Grid / Modos de Visualização */
     .grid { display: grid; gap: 12px; width: 100%; align-content: start; align-items: start; padding-bottom: 80px; }
     
     .grid.view-xl { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
@@ -87,6 +90,7 @@
     .preview-box img, .preview-box video, .preview-box canvas { width: 100%; height: 100%; object-fit: cover; }
     
     .file-name { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
+    .file-path-sub { font-size: 10px; color: #777; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; margin-top: -4px; }
 
     /* Painéis Laterais */
     #detailsPanel { width: 260px; background: #202020; border-left: 1px solid #2d2d2d; padding: 16px; display: none; flex-direction: column; gap: 12px; font-size: 13px; }
@@ -124,7 +128,7 @@
 
     /* Modal de Propriedades */
     #propsModal { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 3000; align-items: center; justify-content: center; }
-    .props-dialog { width: 360px; background: #242424; border: 1px solid #454545; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; flex-direction: column; overflow: hidden; font-size: 12px; }
+    .props-dialog { width: 380px; background: #242424; border: 1px solid #454545; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; flex-direction: column; overflow: hidden; font-size: 12px; }
     .props-header { background: #1f1f1f; padding: 10px 14px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; font-weight: 600; }
     .props-body { padding: 16px; display: flex; flex-direction: column; gap: 10px; color: #ccc; }
     .props-row { display: flex; justify-content: space-between; border-bottom: 1px dashed #333; padding-bottom: 4px; }
@@ -137,7 +141,6 @@
     <div class="sidebar-btn active" id="btnHome" onclick="resetarNavegacao()">💻 Este Computador</div>
     <div class="sidebar-btn" id="btnTrash" onclick="abrirLixeira()">🗑️ Lixeira</div>
     
-    <!-- Seção de Favoritos -->
     <div class="sidebar-section-title">⭐ Favoritos</div>
     <div id="sidebarFavorites" style="display: flex; flex-direction: column; gap: 4px;"></div>
 
@@ -148,24 +151,24 @@
     <div id="main" onmousedown="iniciarSelecaoArrasto(event)">
       <div id="selectionBox"></div>
 
-      <!-- Barra Superior com Voltar, Recarregar e Navegação -->
       <div class="address-bar-container">
         <button id="btnVoltar" class="btn-tool" onclick="voltarPasta()">⬅ Voltar</button>
         <button id="btnRecarregar" class="btn-tool" title="Recarregar Pasta" onclick="recarregarPastaAtual()">🔄</button>
         <div id="breadcrumb" class="breadcrumb"></div>
       </div>
 
-      <!-- Barra de Opções -->
       <div class="toolbar-actions" id="toolbarActions">
-        <!-- Barra de Pesquisa -->
-        <div class="search-box">
-          🔍 <input type="text" id="searchInput" placeholder="Pesquisar nesta pasta..." oninput="filtrarArquivos()">
+        <!-- Barra de Pesquisa com Modo Global -->
+        <div class="search-box-container">
+          🔍 <input type="text" id="searchInput" placeholder="Pesquisar arquivos ou pastas..." oninput="tratarInputBusca()">
+          <label class="search-mode-label" title="Pesquisar em todas as pastas e subpastas">
+            <input type="checkbox" id="checkSearchGlobal" onchange="tratarInputBusca()"> Em todo o servidor
+          </label>
         </div>
 
         <button class="btn-tool" id="btnEsvaziarLixeira" style="display:none; color: #ff6b6b;" onclick="esvaziarLixeiraDefinitivo()">🗑️ Esvaziar Lixeira</button>
         <div style="flex:1;"></div>
 
-        <!-- Menu Classificar -->
         <div class="dropdown">
           <button class="btn-tool" onclick="toggleDropdown(event, 'dropSort')">⇅ Classificar ▾</button>
           <div id="dropSort" class="dropdown-menu">
@@ -176,11 +179,9 @@
             <div class="menu-divider"></div>
             <div class="dropdown-item" onclick="definirOrdem('asc')">• Ordem Crescente</div>
             <div class="dropdown-item" onclick="definirOrdem('desc')">Ordem Decrescente</div>
-            <div class="dropdown-item">Agrupar por ❯</div>
           </div>
         </div>
 
-        <!-- Menu Visualizar -->
         <div class="dropdown">
           <button class="btn-tool" onclick="toggleDropdown(event, 'dropView')">☰ Visualizar ▾</button>
           <div id="dropView" class="dropdown-menu">
@@ -195,7 +196,6 @@
             <div class="menu-divider"></div>
             <div class="dropdown-item" onclick="togglePainelDetalhes()">• 📁 Painel de detalhes</div>
             <div class="dropdown-item" onclick="togglePainelVisualizacao()">🖼️ Painel de visualização</div>
-            <div class="dropdown-item">Mostrar ❯</div>
           </div>
         </div>
       </div>
@@ -205,7 +205,6 @@
       <div style="display: flex; flex: 1; gap: 12px; overflow: hidden;">
         <div class="grid view-lg" id="gridContent" style="flex:1;"></div>
         
-        <!-- Painéis do Menu Visualizar -->
         <div id="detailsPanel">
           <h4 style="margin:0;">Detalhes</h4>
           <div id="detailsContent" style="color:#aaa;">Selecione um item para ver as propriedades.</div>
@@ -217,7 +216,7 @@
     </div>
   </div>
 
-  <!-- Pop-up Modal Universal para Mídia / Fotos / Vídeos -->
+  <!-- Pop-up Modal Universal para Mídia -->
   <div id="mediaModal">
     <div class="modal-header">
       <div class="modal-title" id="modalTitle">Nome do Arquivo</div>
@@ -241,11 +240,11 @@
     </div>
   </div>
 
-  <!-- Modal de Propriedades da Pasta -->
+  <!-- Modal de Propriedades -->
   <div id="propsModal">
     <div class="props-dialog">
       <div class="props-header">
-        <span>Propriedades da Pasta</span>
+        <span id="propsModalTitle">Propriedades</span>
         <span style="cursor:pointer;" onclick="fecharPropriedades()">✕</span>
       </div>
       <div class="props-body" id="propsBody"></div>
@@ -272,7 +271,7 @@
       <span class="menu-shortcut">Enter</span>
     </div>
     <div class="menu-item" id="btnBaixarContext" onclick="baixarSelecionado()">
-      <span>📥 Baixar arquivo</span>
+      <span>📥 Baixar arquivo(s)</span>
     </div>
     <div class="menu-item" id="btnNovaAba" onclick="abrirNovaAba()">
       <span>↗️ Abrir em nova guia</span>
@@ -281,8 +280,8 @@
     <div class="menu-item" onclick="recarregarPastaAtual()">
       <span>🔄 Atualizar / Recarregar</span>
     </div>
-    <div class="menu-item" id="btnPropriedadesPasta" onclick="abrirPropriedadesPasta()">
-      <span>📋 Propriedades da pasta</span>
+    <div class="menu-item" id="btnPropriedades" onclick="abrirPropriedadesMenu()">
+      <span>📋 Propriedades</span>
     </div>
   </div>
 
@@ -293,7 +292,6 @@
     let pastaAtual = SERVIDOR_BASE;
     let emLixeira = false;
     
-    // Múltipla Seleção
     let itensSelecionados = [];
     let ultimoIndiceClicado = -1;
 
@@ -303,7 +301,10 @@
     let listaExibidaAtual = [];
     let indiceMediaAtual = -1;
 
-    // Extensões
+    // Controle da Busca Global
+    let buscaGlobalId = 0;
+    let buscandoGlobalmente = false;
+
     const EXT_IMG = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'];
     const EXT_VID = ['mp4', 'mkv', 'webm', 'mov', 'avi'];
     const EXT_AUD = ['mp3', 'wav', 'ogg', 'aac', 'flac', 'm4a'];
@@ -313,6 +314,22 @@
     function salvarLixeira(itens) { localStorage.setItem('lixeira_drive', JSON.stringify(itens)); }
     function obterFavoritos() { return JSON.parse(localStorage.getItem('favoritos_drive') || '[]'); }
     function salvarFavoritos(favs) { localStorage.setItem('favoritos_drive', JSON.stringify(favs)); atualizarSidebarFavoritos(); }
+
+    function formatarTamanho(bytes) {
+      if (bytes === 0 || isNaN(bytes)) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    async function obterTamanhoUrl(url) {
+      try {
+        const res = await fetch(url, { method: 'HEAD' });
+        const size = res.headers.get('content-length');
+        return size ? parseInt(size, 10) : 0;
+      } catch { return 0; }
+    }
 
     function toggleDropdown(e, id) {
       e.stopPropagation();
@@ -404,7 +421,14 @@
           let ext = isFolder ? 'folder' : (cleanName.split('.').pop().toLowerCase() || 'file');
 
           if (!lixeira.some(l => l.url === fullUrl)) {
-            listaArquivosAtual.push({ name: cleanName, url: fullUrl, isFolder, ext, originalFolder: pastaAtual });
+            listaArquivosAtual.push({ 
+              name: cleanName, 
+              url: fullUrl, 
+              isFolder, 
+              ext, 
+              originalFolder: pastaAtual,
+              pathRelative: cleanName
+            });
           }
         });
 
@@ -415,10 +439,178 @@
       }
     }
 
-    function filtrarArquivos() {
+    /* Lógica de Pesquisa Local x Busca Global */
+    let debounceTimer = null;
+    function tratarInputBusca() {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        const termo = document.getElementById('searchInput').value.toLowerCase().trim();
+        const modoGlobal = document.getElementById('checkSearchGlobal').checked;
+
+        if (modoGlobal && termo.length > 0) {
+          executarBuscaGlobal(termo);
+        } else {
+          buscandoGlobalmente = false;
+          document.getElementById('status').innerText = '';
+          renderizarGrid();
+        }
+      }, 300);
+    }
+
+    async function executarBuscaGlobal(termo) {
+      buscaGlobalId++;
+      const currentSearchId = buscaGlobalId;
+      buscandoGlobalmente = true;
+
+      const resultadosGlobais = [];
+      const pastasParaVisitar = [SERVIDOR_BASE];
+      const lixeira = obterLixeira();
+
+      document.getElementById('status').innerText = `🔍 Pesquisando por "${termo}" em todo o servidor...`;
+
+      while (pastasParaVisitar.length > 0) {
+        if (currentSearchId !== buscaGlobalId) return; // Cancelar se houver nova busca
+
+        let urlDir = pastasParaVisitar.shift();
+        try {
+          const res = await fetch(urlDir);
+          const html = await res.text();
+          const doc = new DOMParser().parseFromString(html, 'text/html');
+          const links = Array.from(doc.querySelectorAll('a'));
+
+          const urlObj = new URL(urlDir);
+          const pathCanonical = urlObj.pathname;
+
+          for (let a of links) {
+            if (currentSearchId !== buscaGlobalId) return;
+
+            let href = a.getAttribute('href');
+            let name = a.innerText.trim() || href;
+            if (!href || href === '#' || href === '../' || name === 'Parent Directory') continue;
+
+            let absObj = new URL(href, urlDir);
+            let targetPath = absObj.pathname;
+            if (!targetPath.startsWith(pathCanonical) || targetPath === pathCanonical) continue;
+
+            let relPath = targetPath.substring(pathCanonical.length);
+            let partes = relPath.split('/').filter(Boolean);
+            if (partes.length > 1) continue;
+
+            let cleanName = decodeURIComponent(partes[0] || name);
+            if (cleanName.toLowerCase() === 'files') continue;
+
+            let fullUrl = absObj.href;
+            let isFolder = fullUrl.endsWith('/');
+            let ext = isFolder ? 'folder' : (cleanName.split('.').pop().toLowerCase() || 'file');
+
+            if (lixeira.some(l => l.url === fullUrl)) continue;
+
+            let caminhoRelativoExibicao = fullUrl.replace(SERVIDOR_BASE, '');
+
+            if (cleanName.toLowerCase().includes(termo)) {
+              resultadosGlobais.push({
+                name: cleanName,
+                url: fullUrl,
+                isFolder,
+                ext,
+                originalFolder: urlDir,
+                pathRelative: decodeURIComponent(caminhoRelativoExibicao)
+              });
+            }
+
+            if (isFolder) {
+              pastasParaVisitar.push(fullUrl);
+            }
+          }
+
+          document.getElementById('status').innerText = `🔍 Pesquisando... (${resultadosGlobais.length} itens encontrados até agora)`;
+          listaExibidaAtual = resultadosGlobais;
+          renderizarGrid();
+        } catch (e) { }
+      }
+
+      if (currentSearchId === buscaGlobalId) {
+        document.getElementById('status').innerText = `Busca global concluída: ${resultadosGlobais.length} itens encontrados.`;
+      }
+    }
+
+    /* Seleção por Arraste */
+    let selecionandoArrasto = false;
+    let startX = 0, startY = 0;
+
+    function iniciarSelecaoArrasto(e) {
+      if (e.button !== 0 || e.target.closest('.card') || e.target.closest('#toolbarActions')) return;
+
+      const mainEl = document.getElementById('main');
+      const rect = mainEl.getBoundingClientRect();
+
+      selecionandoArrasto = true;
+      startX = e.clientX - rect.left + mainEl.scrollLeft;
+      startY = e.clientY - rect.top + mainEl.scrollTop;
+
+      const box = document.getElementById('selectionBox');
+      box.style.left = `${startX}px`;
+      box.style.top = `${startY}px`;
+      box.style.width = '0px';
+      box.style.height = '0px';
+      box.style.display = 'block';
+
+      if (!e.ctrlKey && !e.shiftKey) {
+        itensSelecionados = [];
+        renderizarGrid();
+      }
+
+      document.addEventListener('mousemove', moverSelecaoArrasto);
+      document.addEventListener('mouseup', finalizarSelecaoArrasto);
+    }
+
+    function moverSelecaoArrasto(e) {
+      if (!selecionandoArrasto) return;
+
+      const mainEl = document.getElementById('main');
+      const rect = mainEl.getBoundingClientRect();
+
+      let currentX = e.clientX - rect.left + mainEl.scrollLeft;
+      let currentY = e.clientY - rect.top + mainEl.scrollTop;
+
+      let left = Math.min(startX, currentX);
+      let top = Math.min(startY, currentY);
+      let width = Math.abs(currentX - startX);
+      let height = Math.abs(currentY - startY);
+
+      const box = document.getElementById('selectionBox');
+      box.style.left = `${left}px`;
+      box.style.top = `${top}px`;
+      box.style.width = `${width}px`;
+      box.style.height = `${height}px`;
+
+      listaExibidaAtual.forEach((item, idx) => {
+        const cardEl = document.getElementById(`card-${idx}`);
+        if (!cardEl) return;
+
+        const cardLeft = cardEl.offsetLeft;
+        const cardTop = cardEl.offsetTop;
+        const cardRight = cardLeft + cardEl.offsetWidth;
+        const cardBottom = cardTop + cardEl.offsetHeight;
+
+        let colide = !(left + width < cardLeft || left > cardRight || top + height < cardTop || top > cardBottom);
+
+        if (colide) {
+          if (!itensSelecionados.includes(item.url)) itensSelecionados.push(item.url);
+        }
+      });
+
       renderizarGrid();
     }
 
+    function finalizarSelecaoArrasto() {
+      selecionandoArrasto = false;
+      document.getElementById('selectionBox').style.display = 'none';
+      document.removeEventListener('mousemove', moverSelecaoArrasto);
+      document.removeEventListener('mouseup', finalizarSelecaoArrasto);
+    }
+
+    /* Drag and Drop de Organização Manual */
     function iniciarDragItem(e, url, isFolder, name, idx) {
       e.dataTransfer.setData('text/plain', JSON.stringify({ url, isFolder, name, index: idx }));
       e.dataTransfer.effectAllowed = 'move';
@@ -446,10 +638,10 @@
 
       try {
         const data = JSON.parse(rawData);
-        
+
         if (ordenacaoAtual === 'manual' && typeof targetIndex === 'number') {
-          const movedItem = listaExibidaAtual.splice(data.index, 1)[0];
-          listaExibidaAtual.splice(targetIndex, 0, movedItem);
+          const itemMovido = listaExibidaAtual.splice(data.index, 1)[0];
+          listaExibidaAtual.splice(targetIndex, 0, itemMovido);
           renderizarGrid();
           return;
         }
@@ -478,7 +670,7 @@
       let favs = obterFavoritos();
       
       itensSelecionados.forEach(url => {
-        let item = listaArquivosAtual.find(i => i.url === url);
+        let item = listaArquivosAtual.find(i => i.url === url) || listaExibidaAtual.find(i => i.url === url);
         if (!item) return;
         let idx = favs.findIndex(f => f.url === url);
         if (idx >= 0) {
@@ -577,9 +769,12 @@
     function renderizarGrid() {
       const gridEl = document.getElementById('gridContent');
       const filtro = document.getElementById('searchInput').value.toLowerCase().trim();
+      const modoGlobal = document.getElementById('checkSearchGlobal').checked;
 
-      listaExibidaAtual = listaArquivosAtual.filter(item => item.name.toLowerCase().includes(filtro));
-      
+      if (!modoGlobal) {
+        listaExibidaAtual = listaArquivosAtual.filter(item => item.name.toLowerCase().includes(filtro));
+      }
+
       if (ordenacaoAtual !== 'manual') {
         listaExibidaAtual.sort((a, b) => {
           if (a.isFolder && !b.isFolder) return -1;
@@ -603,7 +798,6 @@
         else if (isTxt) icon = '📝';
 
         let isSelected = itensSelecionados.includes(item.url);
-
         let dragDropPastaAttrs = `ondragover="permitirDropPasta(event, this)" ondragleave="sairDropPasta(event, this)" ondrop="soltarEmPasta(event, '${item.isFolder ? item.url : pastaAtual}', this, ${idx})"`;
 
         return `
@@ -619,6 +813,7 @@
               ${!isImg && !isVid ? `<span style="font-size:32px">${icon}</span>` : ''}
             </div>
             <div class="file-name" id="name-${idx}">${item.name}</div>
+            ${modoGlobal ? `<div class="file-path-sub" title="${item.pathRelative}">${item.pathRelative}</div>` : ''}
           </div>`;
       }).join('');
 
@@ -654,80 +849,14 @@
       renderizarGrid();
     }
 
-    let selecionandoArrasto = false;
-    let startX = 0, startY = 0;
-
-    function iniciarSelecaoArrasto(e) {
-      if (e.button !== 0 || e.target.closest('.card') || e.target.closest('#toolbarActions')) return;
-
-      selecionandoArrasto = true;
-      startX = e.clientX;
-      startY = e.clientY;
-
-      const box = document.getElementById('selectionBox');
-      box.style.left = `${startX}px`;
-      box.style.top = `${startY}px`;
-      box.style.width = '0px';
-      box.style.height = '0px';
-      box.style.display = 'block';
-
-      if (!e.ctrlKey && !e.shiftKey) itensSelecionados = [];
-
-      document.addEventListener('mousemove', moverSelecaoArrasto);
-      document.addEventListener('mouseup', finalizarSelecaoArrasto);
-    }
-
-    function moverSelecaoArrasto(e) {
-      if (!selecionandoArrasto) return;
-      const box = document.getElementById('selectionBox');
-      
-      let currentX = e.clientX;
-      let currentY = e.clientY;
-
-      let left = Math.min(startX, currentX);
-      let top = Math.min(startY, currentY);
-      let width = Math.abs(currentX - startX);
-      let height = Math.abs(currentY - startY);
-
-      box.style.left = `${left}px`;
-      box.style.top = `${top}px`;
-      box.style.width = `${width}px`;
-      box.style.height = `${height}px`;
-
-      const boxRect = box.getBoundingClientRect();
-      listaExibidaAtual.forEach((item, idx) => {
-        const cardEl = document.getElementById(`card-${idx}`);
-        if (!cardEl) return;
-        const cardRect = cardEl.getBoundingClientRect();
-
-        let colide = !(boxRect.right < cardRect.left || 
-                       boxRect.left > cardRect.right || 
-                       boxRect.bottom < cardRect.top || 
-                       boxRect.top > cardRect.bottom);
-
-        if (colide && !itensSelecionados.includes(item.url)) {
-          itensSelecionados.push(item.url);
-        }
-      });
-
-      renderizarGrid();
-    }
-
-    function finalizarSelecaoArrasto() {
-      selecionandoArrasto = false;
-      document.getElementById('selectionBox').style.display = 'none';
-      document.removeEventListener('mousemove', moverSelecaoArrasto);
-      document.removeEventListener('mouseup', finalizarSelecaoArrasto);
-    }
-
     function atualizarPaineis() {
       const details = document.getElementById('detailsContent');
       const preview = document.getElementById('previewContent');
 
       if (itensSelecionados.length === 1) {
-        let item = listaArquivosAtual.find(i => i.url === itensSelecionados[0]);
+        let item = listaArquivosAtual.find(i => i.url === itensSelecionados[0]) || listaExibidaAtual.find(i => i.url === itensSelecionados[0]);
         if (item) {
-          details.innerHTML = `<b>${item.name}</b><br><br>Tipo: ${item.isFolder ? 'Pasta' : item.ext.toUpperCase()}`;
+          details.innerHTML = `<b>${item.name}</b><br><br>Tipo: ${item.isFolder ? 'Pasta' : item.ext.toUpperCase()}<br>Caminho: ${item.pathRelative || item.url}`;
           preview.innerHTML = EXT_IMG.includes(item.ext) ? `<img src="${item.url}" style="max-width:100%; border-radius:6px;">` : `📂 ${item.name}`;
         }
       } else if (itensSelecionados.length > 1) {
@@ -823,10 +952,72 @@
       indiceMediaAtual = -1;
     }
 
+    async function baixarArquivoBlob(url, name) {
+      try {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = name || 'download';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(blobUrl);
+      } catch (e) {
+        window.open(url, '_blank');
+      }
+    }
+
+    async function baixarSelecionado() {
+      if (itensSelecionados.length === 0) return;
+
+      if (itensSelecionados.length === 1) {
+        let item = listaArquivosAtual.find(i => i.url === itensSelecionados[0]) || listaExibidaAtual.find(i => i.url === itensSelecionados[0]);
+        if (item && !item.isFolder) {
+          await baixarArquivoBlob(item.url, item.name);
+        }
+      } else {
+        document.getElementById('status').innerText = 'Compactando arquivos em ZIP... Aguarde...';
+        const zip = new JSZip();
+        let arquivosInclusos = 0;
+
+        for (let url of itensSelecionados) {
+          let item = listaArquivosAtual.find(i => i.url === url) || listaExibidaAtual.find(i => i.url === url);
+          if (item && !item.isFolder) {
+            try {
+              const res = await fetch(item.url);
+              const blob = await res.blob();
+              zip.file(item.name, blob);
+              arquivosInclusos++;
+            } catch (err) {
+              console.error('Erro ao adicionar arquivo ao ZIP:', item.name);
+            }
+          }
+        }
+
+        if (arquivosInclusos > 0) {
+          const zipContent = await zip.generateAsync({ type: 'blob' });
+          const zipUrl = URL.createObjectURL(zipContent);
+          const a = document.createElement('a');
+          a.href = zipUrl;
+          a.download = `arquivos_selecionados_${Date.now()}.zip`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(zipUrl);
+          document.getElementById('status').innerText = 'Download do ZIP concluído!';
+        } else {
+          document.getElementById('status').innerText = 'Não foi possível baixar os arquivos.';
+        }
+      }
+      fecharMenus();
+    }
+
     function baixarItemAtualModal() {
       if (indiceMediaAtual !== -1) {
         let item = listaExibidaAtual[indiceMediaAtual];
-        baixarArquivo(item.url, item.name);
+        baixarArquivoBlob(item.url, item.name);
       }
     }
 
@@ -836,29 +1027,16 @@
       }
     }
 
-    function baixarArquivo(url, name) {
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = name || 'download';
-      a.target = '_blank';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    }
-
-    function baixarSelecionado() {
+    function abrirItemSelecionado() {
       if (itensSelecionados.length > 0) {
-        itensSelecionados.forEach(url => {
-          let item = listaArquivosAtual.find(i => i.url === url);
-          if (item && !item.isFolder) baixarArquivo(item.url, item.name);
-        });
+        let item = listaArquivosAtual.find(i => i.url === itensSelecionados[0]) || listaExibidaAtual.find(i => i.url === itensSelecionados[0]);
+        if (item) executarAbrir(item.url, item.isFolder, item.name);
       }
     }
 
-    function abrirItemSelecionado() {
+    function abrirNovaAba() {
       if (itensSelecionados.length > 0) {
-        let item = listaArquivosAtual.find(i => i.url === itensSelecionados[0]);
-        if (item) executarAbrir(item.url, item.isFolder, item.name);
+        itensSelecionados.forEach(url => window.open(url, '_blank'));
       }
     }
 
@@ -885,8 +1063,6 @@
       document.getElementById('btnNovaAba').style.display = (sobreCard && !emLixeira) ? 'flex' : 'none';
       document.getElementById('btnRestaurar').style.display = (sobreCard && emLixeira) ? 'flex' : 'none';
       
-      document.getElementById('btnPropriedadesPasta').style.display = !sobreCard ? 'flex' : 'none';
-
       let favs = obterFavoritos();
       let ehFav = itensSelecionados.some(u => favs.some(f => f.url === u));
       document.getElementById('txtFavorito').innerText = ehFav ? '❌ Remover dos Favoritos' : '⭐ Adicionar aos Favoritos';
@@ -897,28 +1073,84 @@
       menu.style.top = `${Math.min(y, window.innerHeight - 220)}px`;
     }
 
-    function abrirPropriedadesPasta() {
+    async function abrirPropriedadesMenu() {
       const modal = document.getElementById('propsModal');
       const body = document.getElementById('propsBody');
+      const title = document.getElementById('propsModalTitle');
       fecharMenus();
 
-      let totalArquivos = listaArquivosAtual.filter(i => !i.isFolder).length;
-      let totalPastas = listaArquivosAtual.filter(i => i.isFolder).length;
-      let nomePasta = decodeURIComponent(pastaAtual.replace(/\/$/, '').split('/').pop() || 'Este Computador');
-
-      body.innerHTML = `
-        <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
-          <span style="font-size:36px;">📁</span>
-          <b style="font-size:14px; color:#fff;">${nomePasta}</b>
-        </div>
-        <hr style="border:none; border-top:1px solid #333; margin:4px 0;">
-        <div class="props-row"><span>Tipo:</span><span>Pasta de Arquivos</span></div>
-        <div class="props-row"><span>Caminho:</span><span style="font-size:10px; color:#8ab4f8; overflow:hidden; text-overflow:ellipsis; max-width:200px;">${pastaAtual}</span></div>
-        <div class="props-row"><span>Contém:</span><span>${totalArquivos} Arquivos, ${totalPastas} Pastas</span></div>
-        <div class="props-row"><span>Status:</span><span>Pronto / Acessível</span></div>
-      `;
-
+      body.innerHTML = '<div style="text-align:center; padding:10px; color:#aaa;">Calculando tamanho...</div>';
       modal.style.display = 'flex';
+
+      if (itensSelecionados.length === 1) {
+        let item = listaArquivosAtual.find(i => i.url === itensSelecionados[0]) || listaExibidaAtual.find(i => i.url === itensSelecionados[0]);
+        if (!item) return;
+
+        title.innerText = item.isFolder ? 'Propriedades da Pasta' : 'Propriedades do Arquivo';
+        let tamanhoBytes = 0;
+
+        if (!item.isFolder) {
+          tamanhoBytes = await obterTamanhoUrl(item.url);
+        } else {
+          let arquivos = listaArquivosAtual.filter(i => !i.isFolder);
+          for (let f of arquivos) {
+            tamanhoBytes += await obterTamanhoUrl(f.url);
+          }
+        }
+
+        body.innerHTML = `
+          <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
+            <span style="font-size:36px;">${item.isFolder ? '📁' : '📄'}</span>
+            <b style="font-size:14px; color:#fff;">${item.name}</b>
+          </div>
+          <hr style="border:none; border-top:1px solid #333; margin:4px 0;">
+          <div class="props-row"><span>Tipo:</span><span>${item.isFolder ? 'Pasta de Arquivos' : item.ext.toUpperCase()}</span></div>
+          <div class="props-row"><span>Caminho:</span><span style="font-size:10px; color:#8ab4f8; overflow:hidden; text-overflow:ellipsis; max-width:200px;">${item.url}</span></div>
+          <div class="props-row"><span>Tamanho:</span><span style="color:#8ab4f8; font-weight:bold;">${formatarTamanho(tamanhoBytes)}</span></div>
+          <div class="props-row"><span>Status:</span><span>Pronto / Acessível</span></div>
+        `;
+      } else if (itensSelecionados.length > 1) {
+        title.innerText = 'Propriedades da Seleção';
+        let tamanhoTotal = 0;
+
+        for (let url of itensSelecionados) {
+          let item = listaArquivosAtual.find(i => i.url === url) || listaExibidaAtual.find(i => i.url === url);
+          if (item && !item.isFolder) {
+            tamanhoTotal += await obterTamanhoUrl(item.url);
+          }
+        }
+
+        body.innerHTML = `
+          <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
+            <span style="font-size:36px;">📑</span>
+            <b style="font-size:14px; color:#fff;">${itensSelecionados.length} Itens Selecionados</b>
+          </div>
+          <hr style="border:none; border-top:1px solid #333; margin:4px 0;">
+          <div class="props-row"><span>Tamanho Total:</span><span style="color:#8ab4f8; font-weight:bold;">${formatarTamanho(tamanhoTotal)}</span></div>
+        `;
+      } else {
+        title.innerText = 'Propriedades do Diretório';
+        let totalArquivos = listaArquivosAtual.filter(i => !i.isFolder);
+        let totalPastas = listaArquivosAtual.filter(i => i.isFolder).length;
+        let nomePasta = decodeURIComponent(pastaAtual.replace(/\/$/, '').split('/').pop() || 'Este Computador');
+
+        let tamanhoTotal = 0;
+        for (let f of totalArquivos) {
+          tamanhoTotal += await obterTamanhoUrl(f.url);
+        }
+
+        body.innerHTML = `
+          <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
+            <span style="font-size:36px;">💻</span>
+            <b style="font-size:14px; color:#fff;">${nomePasta}</b>
+          </div>
+          <hr style="border:none; border-top:1px solid #333; margin:4px 0;">
+          <div class="props-row"><span>Tipo:</span><span>Pasta de Arquivos</span></div>
+          <div class="props-row"><span>Caminho:</span><span style="font-size:10px; color:#8ab4f8; overflow:hidden; text-overflow:ellipsis; max-width:200px;">${pastaAtual}</span></div>
+          <div class="props-row"><span>Contém:</span><span>${totalArquivos.length} Arquivos, ${totalPastas} Pastas</span></div>
+          <div class="props-row"><span>Tamanho Total:</span><span style="color:#8ab4f8; font-weight:bold;">${formatarTamanho(tamanhoTotal)}</span></div>
+        `;
+      }
     }
 
     function fecharPropriedades() {
@@ -937,7 +1169,7 @@
       } else {
         let lixeira = obterLixeira();
         itensSelecionados.forEach(url => {
-          let item = listaArquivosAtual.find(i => i.url === url);
+          let item = listaArquivosAtual.find(i => i.url === url) || listaExibidaAtual.find(i => i.url === url);
           if (item) {
             lixeira.push({ ...item, originalFolder: pastaAtual });
           }
@@ -967,10 +1199,6 @@
       if (e.key === 'ArrowLeft') navegarMedia(-1);
       if (e.key === 'ArrowRight') navegarMedia(1);
       if (e.key === 'F5') { e.preventDefault(); recarregarPastaAtual(); }
-    }
-
-    function abrirNovaAba() {
-      if (itensSelecionados.length > 0) window.open(itensSelecionados[0], '_blank');
     }
 
     function resetarNavegacao() { carregarArquivos(SERVIDOR_BASE); }
