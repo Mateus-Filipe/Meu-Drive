@@ -1092,6 +1092,58 @@
     }
 
     function abrirItemEmNovaAba(url, name, ext) {
+      let isVid = EXT_VID.includes(ext);
+      let isAud = EXT_AUD.includes(ext);
+
+      if (isVid || isAud) {
+        let win = window.open('', '_blank');
+        if (win) {
+          win.document.write(`
+            <!DOCTYPE html>
+            <html lang="pt-br">
+            <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>${name || 'Reproduzir Mídia'}</title>
+              <style>
+                body {
+                  margin: 0;
+                  padding: 0;
+                  background-color: #0e0e0e;
+                  color: #fff;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  height: 100vh;
+                  width: 100vw;
+                  overflow: hidden;
+                  font-family: 'Segoe UI', Roboto, sans-serif;
+                }
+                video, audio {
+                  max-width: 100%;
+                  max-height: 100vh;
+                  outline: none;
+                  box-shadow: 0 0 20px rgba(0,0,0,0.8);
+                }
+                audio {
+                  width: 80%;
+                  max-width: 600px;
+                }
+              </style>
+            </head>
+            <body>
+              ${isVid 
+                ? `<video src="${url}" controls autoplay style="width:100%; height:100%; object-fit:contain;"></video>` 
+                : `<audio src="${url}" controls autoplay></audio>`
+              }
+            </body>
+            </html>
+          `);
+          win.document.close();
+          return;
+        }
+      }
+
       window.open(url, '_blank');
     }
 
