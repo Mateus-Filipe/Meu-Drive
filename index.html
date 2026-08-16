@@ -1,692 +1,717 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerenciador Rápido - TV Box</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; user-select: none; }
-        body { background-color: #191919; color: #ffffff; display: flex; height: 100vh; overflow: hidden; }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Drive TV Box - Windows Explorer Web</title>
+  
+  <!-- PDF.js para renderizar Miniaturas Reais de PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 
-        .sidebar { width: 230px; background-color: #202020; border-right: 1px solid #2d2d2d; padding: 15px 10px; display: flex; flex-direction: column; gap: 6px; }
-        .sidebar-title { font-size: 11px; text-transform: uppercase; color: #777; margin: 12px 8px 4px 8px; font-weight: bold; letter-spacing: 0.5px; }
-        .menu-item { display: flex; align-items: center; justify-content: space-between; padding: 9px 12px; border-radius: 6px; cursor: pointer; color: #cccccc; font-size: 13px; }
-        .menu-item:hover, .menu-item.active { background-color: #2d2d2d; color: #ffffff; }
-        .menu-label { display: flex; align-items: center; gap: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  <style>
+    * { box-sizing: border-box; font-family: 'Segoe UI', Roboto, sans-serif; user-select: none; }
+    body { margin: 0; background-color: #191919; color: #e3e3e3; display: flex; height: 100vh; overflow: hidden; }
+    
+    #sidebar { width: 220px; background: #202020; padding: 16px; border-right: 1px solid #2d2d2d; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
+    .sidebar-btn { font-size: 14px; font-weight: 500; color: #ccc; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 6px; transition: 0.2s; }
+    .sidebar-btn:hover, .sidebar-btn.active { background: #2f2f2f; color: #8ab4f8; }
+    .sidebar-section-title { margin-top: 12px; font-size: 11px; font-weight: bold; color: #777; text-transform: uppercase; letter-spacing: 0.5px; padding-left: 4px; }
+    
+    #main { flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; position: relative; }
+    
+    /* Toolbar e Barra de Navegação Estilo Windows 11 */
+    .address-bar-container { display: flex; align-items: center; gap: 8px; background: #252525; padding: 6px 12px; border-radius: 8px; border: 1px solid #333; }
+    
+    .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #aaa; background: #1e1e1e; padding: 6px 12px; border-radius: 6px; border: 1px solid #333; flex: 1; overflow-x: auto; }
+    .crumb-item { color: #eee; cursor: pointer; display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 4px; transition: 0.2s; }
+    .crumb-item:hover { background: #333; color: #8ab4f8; }
+    .crumb-separator { color: #666; font-size: 11px; }
 
-        .main-content { flex: 1; display: flex; flex-direction: column; background-color: #1e1e1e; position: relative; }
-        .toolbar { display: flex; align-items: center; gap: 8px; padding: 8px 15px; background-color: #202020; border-bottom: 1px solid #2d2d2d; flex-wrap: wrap; }
-        
-        .btn { background-color: #2d2d2d; color: #ffffff; border: 1px solid #3d3d3d; padding: 6px 12px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 13px; position: relative; }
-        .btn:hover { background-color: #3d3d3d; }
-        .btn-active { background-color: #0078d4 !important; border-color: #005a9e !important; }
-        .btn-perigo { background-color: #8b0000; border-color: #a00000; }
+    .toolbar-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .btn-tool { background: #282828; color: #ccc; border: 1px solid #3d3d3d; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px; transition: 0.2s; }
+    .btn-tool:hover { background: #333; color: #fff; border-color: #8ab4f8; }
+    
+    .dropdown { position: relative; display: inline-block; }
+    .dropdown-menu { display: none; position: absolute; top: 100%; right: 0; background: #2c2c2c; border: 1px solid #454545; border-radius: 8px; min-width: 180px; box-shadow: 0 8px 16px rgba(0,0,0,0.5); z-index: 500; padding: 6px 0; font-size: 13px; }
+    .dropdown-menu.show { display: block; }
+    .dropdown-item { padding: 8px 16px; cursor: pointer; display: flex; align-items: center; gap: 10px; color: #eee; }
+    .dropdown-item:hover { background: #3a3a3a; }
 
-        .dropdown-menu { position: absolute; top: 110%; left: 0; background: #2b2b2b; border: 1px solid #3d3d3d; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.6); display: none; flex-direction: column; min-width: 170px; z-index: 500; padding: 4px 0; }
-        .dropdown-menu div { padding: 8px 14px; font-size: 13px; color: #eee; cursor: pointer; display: flex; align-items: center; gap: 8px; }
-        .dropdown-menu div:hover { background: #0078d4; color: #fff; }
-        .dropdown-divider { height: 1px; background: #3d3d3d; margin: 4px 0; }
+    /* Exibição em Grid */
+    .grid { display: grid; gap: 12px; }
+    .grid.view-xl { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+    .grid.view-xl .preview-box { height: 160px; }
+    .grid.view-lg { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+    .grid.view-lg .preview-box { height: 120px; }
+    .grid.view-md { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+    .grid.view-md .preview-box { height: 90px; }
+    .grid.view-sm { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
+    .grid.view-sm .preview-box { height: 60px; }
 
-        .breadcrumb { flex: 1; background-color: #181818; border: 1px solid #2d2d2d; padding: 6px 12px; border-radius: 6px; font-size: 13px; color: #aaaaaa; display: flex; align-items: center; gap: 6px; overflow-x: auto; white-space: nowrap; }
-        .crumb-link { color: #569cd6; cursor: pointer; text-decoration: none; }
+    .grid.view-list, .grid.view-details { display: flex; flex-direction: column; gap: 2px; }
+    .grid.view-list .card, .grid.view-details .card { flex-direction: row; align-items: center; height: 38px; padding: 4px 12px; border-radius: 4px; }
+    .grid.view-list .preview-box, .grid.view-details .preview-box { width: 24px; height: 24px; background: transparent; }
 
-        .grid-container { flex: 1; padding: 20px; overflow-y: auto; display: grid; gap: 12px; align-content: start; position: relative; min-height: 200px; }
-        
-        .view-extra-large { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
-        .view-extra-large .card-item { height: 180px; }
-        .view-extra-large .thumb-box { width: 100px; height: 100px; }
+    .card { background: #222; border-radius: 8px; padding: 8px; border: 1px solid #2e2e2e; display: flex; flex-direction: column; gap: 6px; transition: 0.1s; cursor: pointer; position: relative; }
+    .card:hover { background: #2a2a2a; border-color: #8ab4f8; }
+    .card.selected { border-color: #8ab4f8; background: #2b394e; }
+    .card.cut-mode { opacity: 0.4; border-style: dashed; }
 
-        .view-large { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
-        .view-large .card-item { height: 140px; }
-        .view-large .thumb-box { width: 70px; height: 70px; }
+    /* Efeitos de Arraste e Solte (Drag Target) */
+    .drag-over-target { border: 2px dashed #8ab4f8 !important; background: #2f3e58 !important; }
 
-        .view-medium { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
-        .view-medium .card-item { height: 110px; }
-        .view-medium .thumb-box { width: 50px; height: 50px; }
+    .preview-box { background: #141414; border-radius: 6px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; pointer-events: none; }
+    .preview-box img, .preview-box video, .preview-box canvas { width: 100%; height: 100%; object-fit: cover; }
+    
+    .file-name { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; outline: none; }
+    .file-name[contenteditable="true"] { background: #000; border: 1px solid #8ab4f8; white-space: normal; }
 
-        .view-small { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); }
-        .view-small .card-item { height: 85px; }
-        .view-small .thumb-box { width: 35px; height: 35px; }
+    /* Menu de Contexto */
+    #contextMenu { display: none; position: fixed; background: #2c2c2c; border: 1px solid #454545; border-radius: 8px; width: 220px; box-shadow: 0 8px 16px rgba(0,0,0,0.5); z-index: 1000; padding: 6px; font-size: 13px; }
+    .menu-top-actions { display: flex; justify-content: space-around; border-bottom: 1px solid #3d3d3d; padding-bottom: 6px; margin-bottom: 6px; }
+    .menu-top-btn { background: transparent; border: none; color: #eee; padding: 6px; border-radius: 4px; cursor: pointer; font-size: 15px; }
+    .menu-top-btn:hover { background: #3a3a3a; }
+    .menu-item { display: flex; align-items: center; justify-content: space-between; padding: 7px 10px; border-radius: 4px; cursor: pointer; color: #eee; }
+    .menu-item:hover { background: #3a3a3a; }
+    .menu-shortcut { color: #888; font-size: 11px; }
+    .menu-divider { height: 1px; background: #3d3d3d; margin: 4px 0; }
 
-        .view-list, .view-details { display: flex; flex-direction: column; gap: 4px; }
-        .view-list .card-item, .view-details .card-item { flex-direction: row; height: 40px; padding: 0 12px; justify-content: start; gap: 12px; }
-        .view-list .thumb-box, .view-details .thumb-box { width: 24px; height: 24px; }
-
-        .card-item { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 8px; border-radius: 6px; border: 1px solid transparent; cursor: pointer; transition: background-color 0.1s; text-align: center; background: #222222; }
-        .card-item:hover { background-color: #2c2c2c; }
-        .card-item.selected { background-color: #094771 !important; border-color: #0078d4 !important; }
-        .card-item.drag-over-folder { border: 2px dashed #0078d4 !important; background-color: #1c3b52 !important; }
-
-        .thumb-box { display: flex; align-items: center; justify-content: center; font-size: 28px; overflow: hidden; border-radius: 4px; background: #181818; position: relative; }
-        .thumb-box img, .thumb-box canvas { width: 100%; height: 100%; object-fit: cover; }
-
-        .nome { font-size: 12px; color: #dddddd; word-break: break-word; margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-
-        #selection-box { position: absolute; border: 1px dashed #0078d4; background: rgba(0, 120, 212, 0.25); pointer-events: none; display: none; z-index: 100; }
-
-        .modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 2000; }
-        .modal-content { position: relative; width: 80%; max-width: 900px; background: #222; border-radius: 8px; overflow: hidden; padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 15px; }
-        .close-modal { position: absolute; top: 10px; right: 15px; color: #fff; font-size: 24px; cursor: pointer; z-index: 2001; }
-
-        #context-menu { position: fixed; display: none; background: #2b2b2b; border: 1px solid #3d3d3d; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 1000; width: 190px; padding: 4px 0; }
-        #context-menu div { padding: 8px 12px; font-size: 13px; color: #eee; cursor: pointer; }
-        #context-menu div:hover { background: #0078d4; color: #fff; }
-        .drop-active { border: 2px dashed #0078d4 !important; background-color: #252526 !important; }
-    </style>
+    /* Modal Player de Vídeo */
+    #videoModal { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); z-index: 2000; align-items: center; justify-content: center; flex-direction: column; gap: 12px; }
+    #videoModal video { max-width: 90vw; max-height: 80vh; border-radius: 8px; box-shadow: 0 0 20px rgba(0,0,0,0.8); background: #000; }
+    .close-modal { position: absolute; top: 20px; right: 30px; font-size: 32px; color: #fff; cursor: pointer; }
+  </style>
 </head>
-<body onclick="fecharMenus(event)">
+<body onclick="fecharMenus()" oncontextmenu="exibirContextMenuFundo(event)" onkeydown="tratarTeclas(event)">
 
-    <div class="sidebar">
-        <div class="menu-item active" id="btn-home" onclick="carregarArquivos('')">
-            <span class="menu-label">💻 Este Computador</span>
-        </div>
+  <div id="sidebar">
+    <div class="sidebar-btn active" id="btnHome" onclick="resetarNavegacao()">💻 Este Computador</div>
+    <div class="sidebar-btn" id="btnTrash" onclick="abrirLixeira()">🗑️ Lixeira</div>
+    
+    <!-- Seção de Favoritos -->
+    <div class="sidebar-section-title">⭐ Favoritos</div>
+    <div id="sidebarFavorites" style="display: flex; flex-direction: column; gap: 4px;"></div>
 
-        <div class="sidebar-title">⭐ Favoritos</div>
-        <div id="favoritos-lista"></div>
+    <div id="info" style="font-size: 11px; color: #888; margin-top: auto; padding-top: 16px;">Pronto</div>
+  </div>
 
-        <div class="sidebar-title">Sistema</div>
-        <div class="menu-item" id="btn-lixeira" onclick="carregarArquivos('.LIXEIRA_TVBOX')">
-            <span class="menu-label">🗑️ Lixeira</span>
-        </div>
+  <div id="main">
+    <!-- Barra Superior com Voltar e Navegação -->
+    <div class="address-bar-container">
+      <button id="btnVoltar" class="btn-tool" onclick="voltarPasta()">⬅ Voltar</button>
+      <div id="breadcrumb" class="breadcrumb"></div>
     </div>
 
-    <div class="main-content" id="drop-zone">
-        <div class="toolbar">
-            <button class="btn" onclick="voltar()">← Voltar</button>
-            <button class="btn" onclick="carregarArquivos(caminhoAtual)" title="Recarregar pasta">🔄 Recarregar</button>
-            <div class="breadcrumb" id="breadcrumb">💻 Este Computador</div>
+    <!-- Barra de Opções -->
+    <div class="toolbar-actions" id="toolbarActions">
+      <!-- Botão de Upload -->
+      <button class="btn-tool" onclick="document.getElementById('fileUploadInput').click()" title="Fazer Upload de Arquivos">📤 Upload</button>
+      <input type="file" id="fileUploadInput" multiple style="display:none;" onchange="fazerUpload(this.files)">
 
-            <button class="btn" id="btn-add-fav" onclick="adicionarFavoritoPath(caminhoAtual)">⭐ Fixar Pasta</button>
-            <button class="btn" id="btn-toggle-manual" onclick="toggleModoManual()">📌 Org. Manual: OFF</button>
+      <button class="btn-tool" id="btnEsvaziarLixeira" style="display:none; color: #ff6b6b;" onclick="esvaziarLixeiraDefinitivo()">🗑️ Esvaziar Lixeira</button>
+      <div style="flex:1;"></div>
 
-            <div class="btn" onclick="toggleDropdown('dropdown-classificar', event)">
-                ⇅ Classificar ▾
-                <div class="dropdown-menu" id="dropdown-classificar">
-                    <div onclick="definirOrdenacao('nome')">Nome</div>
-                    <div onclick="definirOrdenacao('tipo')">Tipo</div>
-                    <div class="dropdown-divider"></div>
-                    <div onclick="definirDirecao('asc')">Ordem Crescente</div>
-                    <div onclick="definirDirecao('desc')">Ordem Decrescente</div>
-                </div>
+      <div class="dropdown">
+        <button class="btn-tool" onclick="toggleDropdown(event, 'dropSort')">⇅ Classificar ▾</button>
+        <div id="dropSort" class="dropdown-menu">
+          <div class="dropdown-item" onclick="definirOrdenacao('name')">Nome</div>
+          <div class="dropdown-item" onclick="definirOrdenacao('type')">Tipo</div>
+          <div class="menu-divider"></div>
+          <div class="dropdown-item" onclick="definirOrdem('asc')">Ordem Crescente</div>
+          <div class="dropdown-item" onclick="definirOrdem('desc')">Ordem Decrescente</div>
+        </div>
+      </div>
+
+      <div class="dropdown">
+        <button class="btn-tool" onclick="toggleDropdown(event, 'dropView')">☰ Visualizar ▾</button>
+        <div id="dropView" class="dropdown-menu">
+          <div class="dropdown-item" onclick="definirVisualizacao('view-xl')">🔲 Ícones extra grandes</div>
+          <div class="dropdown-item" onclick="definirVisualizacao('view-lg')">⏹ Ícones grandes</div>
+          <div class="dropdown-item" onclick="definirVisualizacao('view-md')">◽ Ícones médios</div>
+          <div class="dropdown-item" onclick="definirVisualizacao('view-sm')">▫ Ícones pequenos</div>
+          <div class="menu-divider"></div>
+          <div class="dropdown-item" onclick="definirVisualizacao('view-list')">☰ Lista</div>
+          <div class="dropdown-item" onclick="definirVisualizacao('view-details')">📋 Detalhes</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="status" style="font-size: 12px; color: #888;"></div>
+    <div class="grid view-lg" id="gridContent"></div>
+  </div>
+
+  <!-- Player de Vídeo Modal -->
+  <div id="videoModal">
+    <span class="close-modal" onclick="fecharPlayerVideo()">✕</span>
+    <h3 id="videoTitle" style="color: #fff; margin: 0;"></h3>
+    <video id="mainVideoPlayer" controls autoplay></video>
+  </div>
+
+  <!-- Menu de Contexto -->
+  <div id="contextMenu">
+    <div class="menu-top-actions" id="menuTopActions">
+      <button class="menu-top-btn" title="Recortar" onclick="recortarItem()">✂️</button>
+      <button class="menu-top-btn" title="Copiar" onclick="copiarItem()">📋</button>
+      <button class="menu-top-btn" title="Renomear" onclick="renomearSelecionado()">✏️</button>
+      <button class="menu-top-btn" title="Excluir" onclick="deletarSelecionado()">🗑️</button>
+    </div>
+    <div class="menu-item" id="btnFavorito" onclick="toggleFavorito()">
+      <span id="txtFavorito">⭐ Adicionar aos Favoritos</span>
+    </div>
+    <div class="menu-item" id="btnRestaurar" style="display:none;" onclick="restaurarItemLixeira()">
+      <span>🔄 Restaurar</span>
+    </div>
+    <div class="menu-item" id="btnAbrir" onclick="abrirItemSelecionado()">
+      <span>📂 Abrir</span>
+      <span class="menu-shortcut">Enter</span>
+    </div>
+    <div class="menu-item" id="btnNovaAba" onclick="abrirNovaAba()">
+      <span>↗️ Abrir em nova guia</span>
+    </div>
+    <div class="menu-divider"></div>
+    <div class="menu-item" id="btnColar" onclick="colarItem()">
+      <span>📥 Colar</span>
+      <span class="menu-shortcut">Ctrl+V</span>
+    </div>
+    <div class="menu-divider"></div>
+    <div class="menu-item" onclick="copiarLink()">
+      <span>🔗 Copiar caminho</span>
+    </div>
+  </div>
+
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+    const SERVIDOR_BASE = 'http://hd-externo.mateus.mooo.com:2101/files/';
+    let pastaAtual = SERVIDOR_BASE;
+    let emLixeira = false;
+    let itemSelecionado = null;
+    let itemTransferencia = null;
+    let ordenacaoAtual = 'name';
+    let ordemDirecao = 'asc';
+    let listaArquivosAtual = [];
+
+    // LocalStorage Getters/Setters
+    function obterLixeira() { return JSON.parse(localStorage.getItem('lixeira_drive') || '[]'); }
+    function salvarLixeira(itens) { localStorage.setItem('lixeira_drive', JSON.stringify(itens)); }
+    function obterFavoritos() { return JSON.parse(localStorage.getItem('favoritos_drive') || '[]'); }
+    function salvarFavoritos(favs) { localStorage.setItem('favoritos_drive', JSON.stringify(favs)); atualizarSidebarFavoritos(); }
+
+    function toggleDropdown(e, id) {
+      e.stopPropagation();
+      fecharMenus();
+      document.getElementById(id).classList.toggle('show');
+    }
+
+    function fecharMenus() {
+      document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('show'));
+      document.getElementById('contextMenu').style.display = 'none';
+    }
+
+    function definirVisualizacao(modo) {
+      document.getElementById('gridContent').className = `grid ${modo}`;
+      fecharMenus();
+    }
+
+    function definirOrdenacao(criterio) {
+      ordenacaoAtual = criterio;
+      renderizarGrid();
+      fecharMenus();
+    }
+
+    function definirOrdem(dir) {
+      ordemDirecao = dir;
+      renderizarGrid();
+      fecharMenus();
+    }
+
+    async function carregarArquivos(targetUrl) {
+      emLixeira = false;
+      pastaAtual = targetUrl.endsWith('/') ? targetUrl : targetUrl + '/';
+      itemSelecionado = null;
+      atualizarSidebarActive('btnHome');
+      document.getElementById('btnEsvaziarLixeira').style.display = 'none';
+      document.getElementById('status').innerText = 'Carregando...';
+
+      atualizarBreadcrumb();
+
+      try {
+        const response = await fetch(pastaAtual);
+        const htmlText = await response.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlText, 'text/html');
+        const links = Array.from(doc.querySelectorAll('a'));
+
+        const lixeira = obterLixeira();
+        listaArquivosAtual = [];
+
+        const urlAtualObj = new URL(pastaAtual);
+        const pathAtualCanonical = urlAtualObj.pathname;
+
+        links.forEach(a => {
+          let href = a.getAttribute('href');
+          let name = a.innerText.trim() || href;
+          if (!href || href === '#' || href === '../' || name === 'Parent Directory') return;
+
+          let absoluteUrlObj = new URL(href, pastaAtual);
+          let targetPath = absoluteUrlObj.pathname;
+
+          if (!targetPath.startsWith(pathAtualCanonical) || targetPath === pathAtualCanonical) return;
+
+          let relPath = targetPath.substring(pathAtualCanonical.length);
+          let partes = relPath.split('/').filter(Boolean);
+          if (partes.length > 1) return;
+
+          let cleanName = decodeURIComponent(partes[0] || name);
+          if (cleanName.toLowerCase() === 'files') return;
+
+          let fullUrl = absoluteUrlObj.href;
+          let isFolder = fullUrl.endsWith('/');
+          let ext = isFolder ? 'folder' : (cleanName.split('.').pop().toLowerCase() || 'file');
+
+          if (!lixeira.some(l => l.url === fullUrl)) {
+            listaArquivosAtual.push({ name: cleanName, url: fullUrl, isFolder, ext, originalFolder: pastaAtual });
+          }
+        });
+
+        document.getElementById('status').innerText = '';
+        renderizarGrid();
+      } catch (err) {
+        document.getElementById('status').innerText = 'Erro de conexão: ' + err.message;
+      }
+    }
+
+    /* SISTEMA DE UPLOAD MULTI-MÉTODO */
+    async function fazerUpload(files, destino = pastaAtual) {
+      if (!files || files.length === 0) return;
+      let target = destino.endsWith('/') ? destino : destino + '/';
+      
+      for (let i = 0; i < files.length; i++) {
+        let file = files[i];
+        document.getElementById('status').innerText = `Enviando (${i+1}/${files.length}): ${file.name}...`;
+        let enviouSucesso = false;
+
+        // Tentativa 1: POST via Form-Data (Requisitado por servidores Android)
+        try {
+          let formData = new FormData();
+          formData.append('file', file, file.name);
+          let res = await fetch(target, { method: 'POST', body: formData });
+          if (res.ok) enviouSucesso = true;
+        } catch (e) {
+          console.warn('POST falhou, tentando PUT...', e);
+        }
+
+        // Tentativa 2: PUT Direto
+        if (!enviouSucesso) {
+          try {
+            let uploadUrl = target + encodeURIComponent(file.name);
+            let res = await fetch(uploadUrl, { method: 'PUT', body: file });
+            if (res.ok) enviouSucesso = true;
+          } catch (err) {
+            console.error('Erro no upload PUT:', err);
+          }
+        }
+      }
+      document.getElementById('status').innerText = 'Upload concluído!';
+      setTimeout(() => carregarArquivos(pastaAtual), 1000);
+    }
+
+    /* ARRASTAR E SOLTAR (DRAG & DROP) ENTRE PASTAS */
+    function iniciarDragItem(e, url, isFolder, name) {
+      e.dataTransfer.setData('text/plain', JSON.stringify({ url, isFolder, name }));
+      e.dataTransfer.effectAllowed = 'move';
+    }
+
+    function permitirDropPasta(e, el) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.dataTransfer.dropEffect = 'move';
+      el.classList.add('drag-over-target');
+    }
+
+    function sairDropPasta(e, el) {
+      e.preventDefault();
+      e.stopPropagation();
+      el.classList.remove('drag-over-target');
+    }
+
+    async function soltarEmPasta(e, targetPastaUrl, el) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (el) el.classList.remove('drag-over-target');
+
+      // Se for arquivo vindo do PC
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        fazerUpload(e.dataTransfer.files, targetPastaUrl);
+        return;
+      }
+
+      const rawData = e.dataTransfer.getData('text/plain');
+      if (!rawData) return;
+
+      try {
+        const data = JSON.parse(rawData);
+        if (!data.url || data.url === targetPastaUrl) return;
+
+        let targetDir = targetPastaUrl.endsWith('/') ? targetPastaUrl : targetPastaUrl + '/';
+        let destUrl = targetDir + encodeURIComponent(data.name) + (data.isFolder ? '/' : '');
+
+        document.getElementById('status').innerText = `Movendo ${data.name}...`;
+
+        await fetch(data.url, {
+          method: 'MOVE',
+          headers: { 'Destination': destUrl }
+        });
+
+        document.getElementById('status').innerText = 'Item movido!';
+        carregarArquivos(pastaAtual);
+      } catch(err) {
+        document.getElementById('status').innerText = 'Aviso: O app servidor da TV Box não aceita o comando de mover arquivos (MOVE).';
+      }
+    }
+
+    /* FAVORITOS */
+    function toggleFavorito() {
+      if (!itemSelecionado) return;
+      let favs = obterFavoritos();
+      let idx = favs.findIndex(f => f.url === itemSelecionado.url);
+      
+      if (idx >= 0) {
+        favs.splice(idx, 1);
+      } else {
+        favs.push({
+          name: itemSelecionado.name,
+          url: itemSelecionado.url,
+          isFolder: itemSelecionado.isFolder,
+          ext: itemSelecionado.isFolder ? 'folder' : itemSelecionado.name.split('.').pop().toLowerCase()
+        });
+      }
+      salvarFavoritos(favs);
+      fecharMenus();
+    }
+
+    function atualizarSidebarFavoritos() {
+      const container = document.getElementById('sidebarFavorites');
+      if (!container) return;
+      let favs = obterFavoritos();
+
+      if (favs.length === 0) {
+        container.innerHTML = '<div style="font-size: 11px; color: #555; padding: 4px 8px;">Nenhum favorito</div>';
+        return;
+      }
+
+      container.innerHTML = favs.map(f => {
+        let icon = f.isFolder ? '📁' : '📄';
+        return `
+          <div class="sidebar-btn" title="${f.name}" onclick="executarAbrir('${f.url}', ${f.isFolder}, '${f.name}')">
+            <span>${icon}</span>
+            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1;">${f.name}</span>
+          </div>`;
+      }).join('');
+    }
+
+    function abrirLixeira() {
+      emLixeira = true;
+      itemSelecionado = null;
+      atualizarSidebarActive('btnTrash');
+      document.getElementById('btnEsvaziarLixeira').style.display = 'inline-flex';
+      
+      listaArquivosAtual = obterLixeira();
+      atualizarBreadcrumbLixeira();
+      renderizarGrid();
+    }
+
+    function atualizarSidebarActive(id) {
+      document.querySelectorAll('.sidebar-btn').forEach(b => b.classList.remove('active'));
+      const activeEl = document.getElementById(id);
+      if (activeEl) activeEl.classList.add('active');
+    }
+
+    function atualizarBreadcrumb() {
+      const breadcrumb = document.getElementById('breadcrumb');
+      const pathClean = pastaAtual.replace(SERVIDOR_BASE, '');
+      const partes = pathClean.split('/').filter(Boolean);
+
+      let html = `<div class="crumb-item" onclick="carregarArquivos('${SERVIDOR_BASE}')" ondragover="permitirDropPasta(event, this)" ondragleave="sairDropPasta(event, this)" ondrop="soltarEmPasta(event, '${SERVIDOR_BASE}', this)">💻 Este Computador</div>`;
+      let urlAcumulada = SERVIDOR_BASE;
+
+      partes.forEach((p) => {
+        if (p.toLowerCase() === 'files') return;
+        urlAcumulada += p + '/';
+        let target = urlAcumulada;
+        html += `<span class="crumb-separator">❯</span>`;
+        html += `<div class="crumb-item" onclick="carregarArquivos('${target}')" ondragover="permitirDropPasta(event, this)" ondragleave="sairDropPasta(event, this)" ondrop="soltarEmPasta(event, '${target}', this)">${decodeURIComponent(p)}</div>`;
+      });
+
+      breadcrumb.innerHTML = html;
+    }
+
+    function atualizarBreadcrumbLixeira() {
+      document.getElementById('breadcrumb').innerHTML = `
+        <div class="crumb-item">💻 Este Computador</div>
+        <span class="crumb-separator">❯</span>
+        <div class="crumb-item" style="color:#8ab4f8;">🗑️ Lixeira</div>
+      `;
+    }
+
+    function voltarPasta() {
+      if (emLixeira) {
+        carregarArquivos(SERVIDOR_BASE);
+        return;
+      }
+      if (pastaAtual === SERVIDOR_BASE) return;
+      let partes = pastaAtual.replace(/\/$/, '').split('/');
+      partes.pop();
+      let novaUrl = partes.join('/') + '/';
+      if (novaUrl.length >= SERVIDOR_BASE.length) {
+        carregarArquivos(novaUrl);
+      }
+    }
+
+    function renderizarGrid() {
+      const gridEl = document.getElementById('gridContent');
+      
+      listaArquivosAtual.sort((a, b) => {
+        if (a.isFolder && !b.isFolder) return -1;
+        if (!a.isFolder && b.isFolder) return 1;
+        let res = a.name.localeCompare(b.name);
+        return ordemDirecao === 'asc' ? res : -res;
+      });
+
+      gridEl.innerHTML = listaArquivosAtual.map((item, idx) => {
+        let isVid = ['mp4', 'mkv', 'webm', 'mov', 'avi'].includes(item.ext);
+        let isImg = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(item.ext);
+        let isPdf = item.ext === 'pdf';
+        let isDoc = ['doc', 'docx'].includes(item.ext);
+        let isXls = ['xls', 'xlsx'].includes(item.ext);
+        let isPpt = ['ppt', 'pptx'].includes(item.ext);
+
+        let icon = '📄';
+        if (item.isFolder) icon = '📁';
+        else if (isPdf) icon = '📕';
+        else if (isDoc) icon = '📘';
+        else if (isXls) icon = '📗';
+        else if (isPpt) icon = '📙';
+
+        let dragDropPastaAttrs = item.isFolder 
+          ? `ondragover="permitirDropPasta(event, this)" ondragleave="sairDropPasta(event, this)" ondrop="soltarEmPasta(event, '${item.url}', this)"` 
+          : '';
+
+        return `
+          <div class="card" id="card-${idx}" draggable="true" 
+               ondragstart="iniciarDragItem(event, '${item.url}', ${item.isFolder}, '${item.name}')"
+               ${dragDropPastaAttrs}
+               onclick="selecionarCard(event, '${item.url}', ${item.isFolder}, '${item.name}', this)"
+               ondblclick="executarAbrir('${item.url}', ${item.isFolder}, '${item.name}')"
+               oncontextmenu="exibirContextMenuCard(event, '${item.url}', ${item.isFolder}, '${item.name}', this)">
+            <div class="preview-box" id="prev-${idx}">
+              ${isImg ? `<img src="${item.url}" loading="lazy">` : ''}
+              ${isVid ? `<video src="${item.url}" preload="metadata"></video>` : ''}
+              ${!isImg && !isVid ? `<span style="font-size:32px">${icon}</span>` : ''}
             </div>
+            <div class="file-name" id="name-${idx}" ondblclick="ativarEdicaoNome(event, this, '${item.url}', '${item.name}')">${item.name}</div>
+          </div>`;
+      }).join('');
 
-            <div class="btn" onclick="toggleDropdown('dropdown-exibir', event)">
-                ☰ Exibir ▾
-                <div class="dropdown-menu" id="dropdown-exibir">
-                    <div onclick="definirModoExibicao('extra-large')">□ Ícones extra grandes</div>
-                    <div onclick="definirModoExibicao('large')">□ Ícones grandes</div>
-                    <div onclick="definirModoExibicao('medium')">□ Ícones médios</div>
-                    <div onclick="definirModoExibicao('small')">□ Ícones pequenos</div>
-                    <div class="dropdown-divider"></div>
-                    <div onclick="definirModoExibicao('list')">≡ Lista</div>
-                    <div onclick="definirModoExibicao('details')">📄 Detalhes</div>
-                </div>
-            </div>
+      listaArquivosAtual.forEach((item, idx) => {
+        if (item.ext === 'pdf') renderizarThumbnailPDF(item.url, `prev-${idx}`);
+      });
+    }
 
-            <button class="btn" id="btn-upload" onclick="document.getElementById('file-input').click()">📤 Upload</button>
-            <button class="btn" id="btn-restaurar-tudo" style="display: none;" onclick="restaurarTudo()">↩️ Restaurar Tudo</button>
-            <button class="btn btn-perigo" id="btn-esvaziar-lixeira" style="display: none;" onclick="esvaziarLixeira()">🧹 Esvaziar Lixeira</button>
-            
-            <input type="file" id="file-input" style="display: none;" onchange="enviarArquivo(this.files)" multiple>
-        </div>
+    async function renderizarThumbnailPDF(url, elementId) {
+      try {
+        const loadingTask = pdfjsLib.getDocument(url);
+        const pdf = await loadingTask.promise;
+        const page = await pdf.getPage(1);
+        const viewport = page.getViewport({ scale: 0.3 });
 
-        <div class="grid-container view-large" id="grid-arquivos">
-            <div style="color: #888; text-align: center; width: 100%;">Carregando...</div>
-        </div>
-        <div id="selection-box"></div>
-    </div>
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
 
-    <!-- MODALS -->
-    <div class="modal" id="media-choice-modal">
-        <div class="modal-content" style="max-width: 400px; text-align: center;">
-            <span class="close-modal" onclick="fecharModalMedia()">&times;</span>
-            <h3 style="margin-bottom: 10px;">Como deseja abrir?</h3>
-            <p id="media-nome-label" style="font-size: 13px; color: #aaa; margin-bottom: 15px;"></p>
-            <button class="btn btn-active" style="width: 100%; justify-content: center;" onclick="abrirMidiaSelecao('popup')">📺 Abrir em Pop-up na Tela</button>
-            <button class="btn" style="width: 100%; justify-content: center;" onclick="abrirMidiaSelecao('aba')">🌐 Abrir em Nova Aba</button>
-        </div>
-    </div>
+        await page.render({ canvasContext: context, viewport: viewport }).promise;
+        const box = document.getElementById(elementId);
+        if (box) { box.innerHTML = ''; box.appendChild(canvas); }
+      } catch (e) {}
+    }
 
-    <div class="modal" id="player-modal">
-        <div class="modal-content">
-            <span class="close-modal" onclick="fecharPlayer()">&times;</span>
-            <div id="player-container" style="width: 100%; display: flex; justify-content: center;"></div>
-        </div>
-    </div>
+    function selecionarCard(e, url, isFolder, name, cardEl) {
+      if (e) e.stopPropagation();
+      document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
+      cardEl.classList.add('selected');
+      itemSelecionado = { url, isFolder, name, el: cardEl };
+    }
 
-    <div id="context-menu"></div>
+    function abrirPlayerVideo(url, title) {
+      const modal = document.getElementById('videoModal');
+      const player = document.getElementById('mainVideoPlayer');
+      document.getElementById('videoTitle').innerText = title;
+      player.src = url;
+      modal.style.display = 'flex';
+    }
 
-    <script>
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    function fecharPlayerVideo() {
+      const modal = document.getElementById('videoModal');
+      const player = document.getElementById('mainVideoPlayer');
+      player.pause();
+      player.src = '';
+      modal.style.display = 'none';
+    }
 
-        // IP DA SUA TV BOX / SERVIDOR PYTHON
-        const IP_PONTE = "192.168.15.26";
-        const PORTA_PONTE = "2101";
+    function executarAbrir(url, isFolder, name) {
+      if (emLixeira) return;
+      let ext = name ? name.split('.').pop().toLowerCase() : '';
+      let isVid = ['mp4', 'mkv', 'webm', 'mov', 'avi'].includes(ext);
 
-        let caminhoAtual = "";
-        let itensSelecionados = new Set();
-        let itemMidiaPendente = null;
-        let itemRecortado = null;
-        let dadosArquivos = [];
-        let ordenacaoCampo = "nome";
-        let ordenacaoDirecao = "asc";
-        let modoManual = false;
-        let arrastadoIndex = null;
+      if (isFolder) carregarArquivos(url);
+      else if (isVid) abrirPlayerVideo(url, name);
+      else window.open(url, '_blank');
+    }
 
-        function getBaseUrl() { return `http://${IP_PONTE}:${PORTA_PONTE}`; }
+    function abrirItemSelecionado() {
+      if (itemSelecionado) executarAbrir(itemSelecionado.url, itemSelecionado.isFolder, itemSelecionado.name);
+    }
 
-        function toggleModoManual() {
-            modoManual = !modoManual;
-            const btn = document.getElementById('btn-toggle-manual');
-            btn.innerText = `📌 Org. Manual: ${modoManual ? 'ON' : 'OFF'}`;
-            btn.className = `btn ${modoManual ? 'btn-active' : ''}`;
-            aplicarEExibir();
+    function exibirContextMenuCard(e, url, isFolder, name, cardEl) {
+      e.preventDefault();
+      e.stopPropagation();
+      selecionarCard(e, url, isFolder, name, cardEl);
+      abrirContextMenu(e.clientX, e.clientY, true);
+    }
+
+    function exibirContextMenuFundo(e) {
+      e.preventDefault();
+      document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
+      itemSelecionado = null;
+      abrirContextMenu(e.clientX, e.clientY, false);
+    }
+
+    function abrirContextMenu(x, y, sobreCard) {
+      const menu = document.getElementById('contextMenu');
+      document.getElementById('menuTopActions').style.display = sobreCard ? 'flex' : 'none';
+      document.getElementById('btnAbrir').style.display = (sobreCard && !emLixeira) ? 'flex' : 'none';
+      document.getElementById('btnNovaAba').style.display = (sobreCard && !emLixeira) ? 'flex' : 'none';
+      document.getElementById('btnRestaurar').style.display = (sobreCard && emLixeira) ? 'flex' : 'none';
+      
+      let favs = obterFavoritos();
+      let ehFav = itemSelecionado && favs.some(f => f.url === itemSelecionado.url);
+      document.getElementById('txtFavorito').innerText = ehFav ? '❌ Remover dos Favoritos' : '⭐ Adicionar aos Favoritos';
+      document.getElementById('btnFavorito').style.display = (sobreCard && !emLixeira) ? 'flex' : 'none';
+
+      menu.style.display = 'block';
+      menu.style.left = `${Math.min(x, window.innerWidth - 230)}px`;
+      menu.style.top = `${Math.min(y, window.innerHeight - 200)}px`;
+    }
+
+    function recortarItem() {
+      if (!itemSelecionado || emLixeira) return;
+      itemTransferencia = { ...itemSelecionado, action: 'cut' };
+      itemSelecionado.el.classList.add('cut-mode');
+    }
+
+    function copiarItem() {
+      if (!itemSelecionado || emLixeira) return;
+      itemTransferencia = { ...itemSelecionado, action: 'copy' };
+    }
+
+    async function colarItem() {
+      if (!itemTransferencia || emLixeira) return;
+      let destinoUrl = pastaAtual + encodeURIComponent(itemTransferencia.name);
+      try {
+        await fetch(itemTransferencia.url, {
+          method: itemTransferencia.action === 'cut' ? 'MOVE' : 'COPY',
+          headers: { 'Destination': destinoUrl }
+        });
+        carregarArquivos(pastaAtual);
+      } catch {
+        alert('Operação não suportada diretamente pelo navegador.');
+      }
+    }
+
+    function deletarSelecionado() {
+      if (!itemSelecionado) return;
+      
+      if (emLixeira) {
+        if (confirm(`Excluir definitivamente "${itemSelecionado.name}"?`)) {
+          let lixeira = obterLixeira().filter(i => i.url !== itemSelecionado.url);
+          salvarLixeira(lixeira);
+          abrirLixeira();
         }
+      } else {
+        let lixeira = obterLixeira();
+        let ext = itemSelecionado.isFolder ? 'folder' : itemSelecionado.name.split('.').pop().toLowerCase();
+        lixeira.push({
+          name: itemSelecionado.name,
+          url: itemSelecionado.url,
+          isFolder: itemSelecionado.isFolder,
+          ext: ext,
+          originalFolder: pastaAtual
+        });
+        salvarLixeira(lixeira);
+        carregarArquivos(pastaAtual);
+      }
+    }
 
-        async function carregarArquivos(caminho = '') {
-            caminhoAtual = caminho;
-            itensSelecionados.clear();
-            atualizarInterface();
-            
-            const grid = document.getElementById('grid-arquivos');
-            grid.innerHTML = '<div style="color: #888; text-align: center; width: 100%;">Carregando...</div>';
+    function restaurarItemLixeira() {
+      if (!itemSelecionado || !emLixeira) return;
+      let lixeira = obterLixeira().filter(i => i.url !== itemSelecionado.url);
+      salvarLixeira(lixeira);
+      abrirLixeira();
+    }
 
-            try {
-                const targetUrl = `${getBaseUrl()}/${encodeURIComponent(caminho).replace(/%2F/g, '/')}`;
-                const res = await fetch(targetUrl);
-                const data = await res.json();
+    function esvaziarLixeiraDefinitivo() {
+      if (confirm('Tem certeza que deseja esvaziar a lixeira permanentemente?')) {
+        salvarLixeira([]);
+        abrirLixeira();
+      }
+    }
 
-                if (data.status === "sucesso") {
-                    dadosArquivos = data.dados || [];
-                    aplicarEExibir();
-                } else {
-                    grid.innerHTML = `<div style="color:#ff5555; text-align:center; width:100%;">Erro: ${data.mensagem}</div>`;
-                }
-            } catch (err) {
-                grid.innerHTML = `<div style="color:#ff5555; text-align:center; width:100%;">Erro de conexão com a Ponte Python!</div>`;
-            }
+    function renomearSelecionado() {
+      if (!itemSelecionado || emLixeira) return;
+      const nameEl = itemSelecionado.el.querySelector('.file-name');
+      ativarEdicaoNome(null, nameEl, itemSelecionado.url, itemSelecionado.name);
+    }
+
+    function ativarEdicaoNome(e, el, urlAntiga, nomeAntigo) {
+      if (e) e.stopPropagation();
+      if (emLixeira) return;
+      el.setAttribute('contenteditable', 'true');
+      el.focus();
+      el.onblur = async () => {
+        el.setAttribute('contenteditable', 'false');
+        let novoNome = el.innerText.trim();
+        if (novoNome && novoNome !== nomeAntigo) {
+          let urlNova = urlAntiga.replace(encodeURIComponent(nomeAntigo), encodeURIComponent(novoNome));
+          await fetch(urlAntiga, { method: 'MOVE', headers: { 'Destination': urlNova } });
+          carregarArquivos(pastaAtual);
         }
+      };
+    }
 
-        function aplicarEExibir() {
-            const grid = document.getElementById('grid-arquivos');
-            grid.innerHTML = '';
+    function tratarTeclas(e) {
+      if (e.key === 'Delete' && itemSelecionado) deletarSelecionado();
+      if (e.key === 'Escape') fecharPlayerVideo();
+    }
 
-            if (dadosArquivos.length === 0) {
-                grid.innerHTML = '<div style="color: #888; text-align: center; width: 100%;">Pasta vazia</div>';
-                return;
-            }
+    function abrirNovaAba() { if (itemSelecionado && !emLixeira) window.open(itemSelecionado.url, '_blank'); }
+    function copiarLink() { if (itemSelecionado) navigator.clipboard.writeText(itemSelecionado.url); }
+    function resetarNavegacao() { carregarArquivos(SERVIDOR_BASE); }
 
-            if (!modoManual) {
-                dadosArquivos.sort((a, b) => {
-                    let vA = ordenacaoCampo === 'tipo' ? (a.isDir ? 'dir' : 'file') : a.nome.toLowerCase();
-                    let vB = ordenacaoCampo === 'tipo' ? (b.isDir ? 'dir' : 'file') : b.nome.toLowerCase();
-                    if (vA < vB) return ordenacaoDirecao === 'asc' ? -1 : 1;
-                    if (vA > vB) return ordenacaoDirecao === 'asc' ? 1 : -1;
-                    return 0;
-                });
-            }
+    // Eventos Globais de Drag and Drop para Upload de Arquivos
+    window.onload = () => {
+      atualizarSidebarFavoritos();
+      carregarArquivos(SERVIDOR_BASE);
 
-            dadosArquivos.forEach((item, index) => {
-                const card = document.createElement('div');
-                card.className = `card-item ${itensSelecionados.has(item.nome) ? 'selected' : ''}`;
-                card.draggable = true;
-                card.dataset.nome = item.nome;
-                
-                const itemPath = caminhoAtual ? `${caminhoAtual}/${item.nome}` : item.nome;
-                const ext = item.nome.split('.').pop().toLowerCase();
-                const itemUrl = `${getBaseUrl()}/${encodeURIComponent(itemPath).replace(/%2F/g, '/')}`;
-
-                const thumbBox = document.createElement('div');
-                thumbBox.className = 'thumb-box';
-
-                if (item.isDir) {
-                    thumbBox.innerHTML = '📁';
-                } else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
-                    thumbBox.innerHTML = `<img src="${itemUrl}" loading="lazy" onerror="this.parentNode.innerHTML='🖼️'">`;
-                } else if (ext === 'pdf') {
-                    thumbBox.innerHTML = '📕';
-                    const canvas = document.createElement('canvas');
-                    pdfjsLib.getDocument(itemUrl).promise.then(pdf => {
-                        pdf.getPage(1).then(page => {
-                            const viewport = page.getViewport({ scale: 0.3 });
-                            canvas.height = viewport.height;
-                            canvas.width = viewport.width;
-                            page.render({ canvasContext: canvas.getContext('2d'), viewport });
-                            thumbBox.innerHTML = '';
-                            thumbBox.appendChild(canvas);
-                        });
-                    }).catch(() => {});
-                } else if (['mp4', 'mov', 'mkv', 'webm', 'avi'].includes(ext)) {
-                    thumbBox.innerHTML = '🎬';
-                } else {
-                    thumbBox.innerHTML = '📄';
-                }
-
-                const nomeEl = document.createElement('div');
-                nomeEl.className = 'nome';
-                nomeEl.innerText = item.nome;
-
-                card.appendChild(thumbBox);
-                card.appendChild(nomeEl);
-
-                card.onclick = (e) => {
-                    e.stopPropagation();
-                    if (e.ctrlKey || e.metaKey) {
-                        if (itensSelecionados.has(item.nome)) itensSelecionados.delete(item.nome);
-                        else itensSelecionados.add(item.nome);
-                    } else {
-                        itensSelecionados.clear();
-                        itensSelecionados.add(item.nome);
-                    }
-                    atualizarSelecaoVisual();
-                };
-
-                card.ondblclick = (e) => {
-                    e.stopPropagation();
-                    if (item.isDir) {
-                        carregarArquivos(itemPath);
-                    } else if (['mp4', 'mov', 'mkv', 'webm', 'avi', 'jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
-                        itemMidiaPendente = { url: itemUrl, ext, nome: item.nome };
-                        document.getElementById('media-nome-label').innerText = item.nome;
-                        document.getElementById('media-choice-modal').style.display = 'flex';
-                    } else {
-                        window.open(itemUrl, '_blank');
-                    }
-                };
-
-                card.oncontextmenu = (e) => {
-                    e.preventDefault(); e.stopPropagation();
-                    if (!itensSelecionados.has(item.nome)) {
-                        itensSelecionados.clear();
-                        itensSelecionados.add(item.nome);
-                        atualizarSelecaoVisual();
-                    }
-                    abrirMenuContexto(e.clientX, e.clientY, item);
-                };
-
-                card.ondragstart = (e) => {
-                    arrastadoIndex = index;
-                    e.dataTransfer.setData('text/plain', JSON.stringify({ ...item, path: itemPath }));
-                };
-
-                card.ondragover = (e) => {
-                    e.preventDefault();
-                    if (!modoManual && item.isDir && arrastadoIndex !== index) {
-                        card.classList.add('drag-over-folder');
-                    }
-                };
-
-                card.ondragleave = () => card.classList.remove('drag-over-folder');
-
-                card.ondrop = async (e) => {
-                    e.preventDefault();
-                    card.classList.remove('drag-over-folder');
-
-                    if (modoManual) {
-                        if (arrastadoIndex !== null && arrastadoIndex !== index) {
-                            const itemMovido = dadosArquivos.splice(arrastadoIndex, 1)[0];
-                            dadosArquivos.splice(index, 0, itemMovido);
-                            aplicarEExibir();
-                        }
-                    } else if (item.isDir) {
-                        const itemOrigem = JSON.parse(e.dataTransfer.getData('text/plain'));
-                        if (itemOrigem && itemOrigem.path !== itemPath) {
-                            const novoCaminho = `${itemPath}/${itemOrigem.nome}`;
-                            await moverItem(itemOrigem.path, novoCaminho);
-                        }
-                    }
-                };
-
-                grid.appendChild(card);
-            });
+      const mainEl = document.getElementById('main');
+      mainEl.addEventListener('dragover', (e) => e.preventDefault());
+      mainEl.addEventListener('drop', (e) => {
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+          e.preventDefault();
+          fazerUpload(e.dataTransfer.files, pastaAtual);
         }
-
-        document.getElementById('grid-arquivos').oncontextmenu = (e) => {
-            if (e.target.id === 'grid-arquivos' || e.target.classList.contains('grid-container')) {
-                e.preventDefault();
-                itensSelecionados.clear();
-                atualizarSelecaoVisual();
-                abrirMenuAreaVazia(e.clientX, e.clientY);
-            }
-        };
-
-        function abrirMenuAreaVazia(x, y) {
-            const menu = document.getElementById('context-menu');
-            let html = `
-                <div onclick="criarNovaPasta()">📁 Nova Pasta</div>
-                <div onclick="document.getElementById('file-input').click()">📤 Upload de Arquivos</div>
-            `;
-            if (itemRecortado) html += `<div onclick="acaoColar()">📋 Colar Aqui</div>`;
-            html += `<div onclick="carregarArquivos(caminhoAtual)">🔄 Recarregar</div>`;
-            
-            menu.innerHTML = html;
-            menu.style.left = `${x}px`; menu.style.top = `${y}px`;
-            menu.style.display = 'block';
-        }
-
-        function atualizarSelecaoVisual() {
-            document.querySelectorAll('.card-item').forEach(card => {
-                if (itensSelecionados.has(card.dataset.nome)) card.classList.add('selected');
-                else card.classList.remove('selected');
-            });
-        }
-
-        // SELEÇÃO POR CAIXA AZUL
-        const gridBox = document.getElementById('grid-arquivos');
-        const selBox = document.getElementById('selection-box');
-        let isSelecting = false, startX = 0, startY = 0;
-
-        gridBox.onmousedown = (e) => {
-            if (e.target !== gridBox && !e.target.classList.contains('grid-container')) return;
-            isSelecting = true;
-            const rect = gridBox.getBoundingClientRect();
-            startX = e.clientX - rect.left + gridBox.scrollLeft;
-            startY = e.clientY - rect.top + gridBox.scrollTop;
-
-            selBox.style.left = `${startX}px`; selBox.style.top = `${startY}px`;
-            selBox.style.width = '0px'; selBox.style.height = '0px';
-            selBox.style.display = 'block';
-
-            if (!e.ctrlKey) itensSelecionados.clear();
-        };
-
-        gridBox.onmousemove = (e) => {
-            if (!isSelecting) return;
-            const rect = gridBox.getBoundingClientRect();
-            const currentX = e.clientX - rect.left + gridBox.scrollLeft;
-            const currentY = e.clientY - rect.top + gridBox.scrollTop;
-
-            const width = Math.abs(currentX - startX);
-            const height = Math.abs(currentY - startY);
-            const left = Math.min(currentX, startX);
-            const top = Math.min(currentY, startY);
-
-            selBox.style.left = `${left}px`; selBox.style.top = `${top}px`;
-            selBox.style.width = `${width}px`; selBox.style.height = `${height}px`;
-
-            document.querySelectorAll('.card-item').forEach(card => {
-                const cRect = {
-                    left: card.offsetLeft,
-                    top: card.offsetTop,
-                    right: card.offsetLeft + card.offsetWidth,
-                    bottom: card.offsetTop + card.offsetHeight
-                };
-
-                if (left < cRect.right && left + width > cRect.left && top < cRect.bottom && top + height > cRect.top) {
-                    itensSelecionados.add(card.dataset.nome);
-                }
-            });
-            atualizarSelecaoVisual();
-        };
-
-        window.onmouseup = () => {
-            if (isSelecting) {
-                isSelecting = false;
-                selBox.style.display = 'none';
-            }
-        };
-
-        function fecharModalMedia() { document.getElementById('media-choice-modal').style.display = 'none'; }
-
-        function abrirMidiaSelecao(tipo) {
-            fecharModalMedia();
-            if (!itemMidiaPendente) return;
-
-            if (tipo === 'aba') {
-                window.open(itemMidiaPendente.url, '_blank');
-            } else {
-                const container = document.getElementById('player-container');
-                if (['mp4', 'mov', 'mkv', 'webm', 'avi'].includes(itemMidiaPendente.ext)) {
-                    container.innerHTML = `<video src="${itemMidiaPendente.url}" controls autoplay style="width:100%; max-height:80vh;"></video>`;
-                } else {
-                    container.innerHTML = `<img src="${itemMidiaPendente.url}" style="max-width:100%; max-height:80vh; object-fit:contain;">`;
-                }
-                document.getElementById('player-modal').style.display = 'flex';
-            }
-        }
-
-        function fecharPlayer() {
-            document.getElementById('player-modal').style.display = 'none';
-            document.getElementById('player-container').innerHTML = '';
-        }
-
-        async function moverItem(de, para) {
-            await fetch(`${getBaseUrl()}/sys/mover`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ de, para })
-            });
-            carregarArquivos(caminhoAtual);
-        }
-
-        async function criarNovaPasta() {
-            const nome = prompt("Nome da nova pasta:");
-            if (nome) {
-                const caminho = caminhoAtual ? `${caminhoAtual}/${nome}` : nome;
-                await fetch(`${getBaseUrl()}/sys/criar-pasta`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ caminho })
-                });
-                carregarArquivos(caminhoAtual);
-            }
-        }
-
-        function carregarFavoritos() {
-            const favs = JSON.parse(localStorage.getItem('fav_paths') || '[]');
-            const container = document.getElementById('favoritos-lista');
-            container.innerHTML = '';
-
-            favs.forEach(path => {
-                const item = document.createElement('div');
-                item.className = `menu-item ${caminhoAtual === path ? 'active' : ''}`;
-                const nome = path.split('/').pop() || 'Raíz';
-                item.innerHTML = `
-                    <span class="menu-label">⭐ ${nome}</span>
-                    <span style="font-size:10px; color:#888;" onclick="removerFavorito('${path}', event)">❌</span>
-                `;
-                item.onclick = () => carregarArquivos(path);
-                container.appendChild(item);
-            });
-        }
-
-        function adicionarFavoritoPath(path) {
-            if (!path) return alert("Você já está na raiz.");
-            let favs = JSON.parse(localStorage.getItem('fav_paths') || '[]');
-            if (!favs.includes(path)) {
-                favs.push(path);
-                localStorage.setItem('fav_paths', JSON.stringify(favs));
-                carregarFavoritos();
-            }
-        }
-
-        function removerFavorito(path, event) {
-            event.stopPropagation();
-            let favs = JSON.parse(localStorage.getItem('fav_paths') || '[]');
-            favs = favs.filter(f => f !== path);
-            localStorage.setItem('fav_paths', JSON.stringify(favs));
-            carregarFavoritos();
-        }
-
-        function abrirMenuContexto(x, y, item) {
-            const menu = document.getElementById('context-menu');
-            const naLixeira = caminhoAtual.startsWith('.LIXEIRA_TVBOX');
-
-            if (naLixeira) {
-                menu.innerHTML = `
-                    <div onclick="acaoRestaurar()">↩️ Restaurar Selecionados</div>
-                    <div onclick="acaoExcluirDefinitivo()" style="color: #ff6b6b;">❌ Excluir Definitivamente</div>
-                `;
-            } else {
-                const targetPath = caminhoAtual ? `${caminhoAtual}/${item.nome}` : item.nome;
-                let html = `
-                    <div onclick="acaoRenomear()">✏️ Renomear</div>
-                    <div onclick="acaoRecortar()">✂️ Recortar</div>
-                `;
-                if (item.isDir) html += `<div onclick="adicionarFavoritoPath('${targetPath}')">⭐ Fixar nos Favoritos</div>`;
-                if (itemRecortado) html += `<div onclick="acaoColar()">📋 Colar Aqui</div>`;
-                html += `
-                    <div onclick="acaoBaixar()">⬇️ Baixar</div>
-                    <div onclick="acaoMoverLixeira()" style="color: #ff6b6b;">🗑️ Mover para Lixeira</div>
-                `;
-                menu.innerHTML = html;
-            }
-            menu.style.left = `${x}px`; menu.style.top = `${y}px`;
-            menu.style.display = 'block';
-        }
-
-        function acaoRecortar() {
-            if (itensSelecionados.size > 0) itemRecortado = Array.from(itensSelecionados)[0];
-        }
-
-        async function acaoColar() {
-            if (!itemRecortado) return;
-            const de = itemRecortado;
-            const para = caminhoAtual ? `${caminhoAtual}/${itemRecortado.split('/').pop()}` : itemRecortado.split('/').pop();
-            await moverItem(de, para);
-            itemRecortado = null;
-        }
-
-        async function acaoRenomear() {
-            const arr = Array.from(itensSelecionados);
-            if (!arr.length) return;
-            const nomeAntigo = arr[0];
-            const novoNome = prompt("Digite o novo nome:", nomeAntigo);
-            if (novoNome && novoNome !== nomeAntigo) {
-                const de = caminhoAtual ? `${caminhoAtual}/${nomeAntigo}` : nomeAntigo;
-                const para = caminhoAtual ? `${caminhoAtual}/${novoNome}` : novoNome;
-                await moverItem(de, para);
-            }
-        }
-
-        async function acaoMoverLixeira() {
-            for (let nome of itensSelecionados) {
-                const p = caminhoAtual ? `${caminhoAtual}/${nome}` : nome;
-                await fetch(`${getBaseUrl()}/${encodeURIComponent(p).replace(/%2F/g, '/')}`, { method: 'DELETE' });
-            }
-            carregarArquivos(caminhoAtual);
-        }
-
-        async function acaoExcluirDefinitivo() {
-            if (confirm(`Excluir permanentemente o(s) item(ns) selecionado(s)?`)) {
-                for (let nome of itensSelecionados) {
-                    const p = caminhoAtual ? `${caminhoAtual}/${nome}` : nome;
-                    await fetch(`${getBaseUrl()}/${encodeURIComponent(p).replace(/%2F/g, '/')}`, { method: 'DELETE' });
-                }
-                carregarArquivos(caminhoAtual);
-            }
-        }
-
-        async function acaoRestaurar() {
-            for (let nome of itensSelecionados) {
-                await fetch(`${getBaseUrl()}/sys/restaurar`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ nome })
-                });
-            }
-            carregarArquivos(caminhoAtual);
-        }
-
-        function acaoBaixar() {
-            const arr = Array.from(itensSelecionados);
-            if (arr.length) {
-                const p = caminhoAtual ? `${caminhoAtual}/${arr[0]}` : arr[0];
-                window.open(`${getBaseUrl()}/${encodeURIComponent(p).replace(/%2F/g, '/')}`, '_blank');
-            }
-        }
-
-        async function esvaziarLixeira() {
-            if (confirm("Esvaziar toda a Lixeira?")) {
-                await fetch(`${getBaseUrl()}/sys/esvaziar-lixeira`, { method: 'POST' });
-                carregarArquivos('.LIXEIRA_TVBOX');
-            }
-        }
-
-        async function restaurarTudo() {
-            await fetch(`${getBaseUrl()}/sys/restaurar-tudo`, { method: 'POST' });
-            carregarArquivos('.LIXEIRA_TVBOX');
-        }
-
-        const dropZone = document.getElementById('drop-zone');
-        dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('drop-active'); };
-        dropZone.ondragleave = () => dropZone.classList.remove('drop-active');
-        dropZone.ondrop = (e) => {
-            e.preventDefault(); dropZone.classList.remove('drop-active');
-            if (e.dataTransfer.files.length) enviarArquivo(e.dataTransfer.files);
-        };
-
-        async function enviarArquivo(files) {
-            if (!files.length) return;
-            const grid = document.getElementById('grid-arquivos');
-            grid.innerHTML = '<div style="color: #888; text-align: center; width: 100%;">Enviando arquivo(s)... Aguarde!</div>';
-
-            for (let file of files) {
-                const destPath = caminhoAtual ? `${caminhoAtual}/${file.name}` : file.name;
-                const url = `${getBaseUrl()}/${encodeURIComponent(destPath).replace(/%2F/g, '/')}`;
-                await fetch(url, { method: 'PUT', body: file });
-            }
-            document.getElementById('file-input').value = '';
-            carregarArquivos(caminhoAtual);
-        }
-
-        function toggleDropdown(id, event) {
-            event.stopPropagation();
-            fecharMenus();
-            document.getElementById(id).style.display = 'flex';
-        }
-
-        function fecharMenus() {
-            document.querySelectorAll('.dropdown-menu').forEach(m => m.style.display = 'none');
-            document.getElementById('context-menu').style.display = 'none';
-        }
-
-        function definirModoExibicao(modo) {
-            document.getElementById('grid-arquivos').className = `grid-container view-${modo}`;
-        }
-
-        function definirOrdenacao(campo) { ordenacaoCampo = campo; aplicarEExibir(); }
-        function definirDirecao(dir) { ordenacaoDirecao = dir; aplicarEExibir(); }
-
-        function atualizarBreadcrumb() {
-            const container = document.getElementById('breadcrumb');
-            if (caminhoAtual.startsWith('.LIXEIRA_TVBOX')) {
-                container.innerHTML = '🗑️ Lixeira'; return;
-            }
-            let html = `<span class="crumb-link" onclick="carregarArquivos('')">💻 Este Computador</span>`;
-            if (caminhoAtual) {
-                let acum = "";
-                caminhoAtual.split('/').forEach(p => {
-                    acum += (acum ? '/' : '') + p;
-                    const target = acum;
-                    html += ` / <span class="crumb-link" onclick="carregarArquivos('${target}')">${p}</span>`;
-                });
-            }
-            container.innerHTML = html;
-        }
-
-        function atualizarInterface() {
-            const naLixeira = caminhoAtual.startsWith('.LIXEIRA_TVBOX');
-            document.getElementById('btn-home').className = `menu-item ${(!naLixeira && !caminhoAtual) ? 'active' : ''}`;
-            document.getElementById('btn-lixeira').className = `menu-item ${naLixeira ? 'active' : ''}`;
-            document.getElementById('btn-upload').style.display = naLixeira ? 'none' : 'flex';
-            document.getElementById('btn-add-fav').style.display = naLixeira ? 'none' : 'flex';
-            document.getElementById('btn-toggle-manual').style.display = naLixeira ? 'none' : 'flex';
-            document.getElementById('btn-esvaziar-lixeira').style.display = naLixeira ? 'flex' : 'none';
-            document.getElementById('btn-restaurar-tudo').style.display = naLixeira ? 'flex' : 'none';
-            atualizarBreadcrumb();
-            carregarFavoritos();
-        }
-
-        function voltar() {
-            if (!caminhoAtual) return;
-            const partes = caminhoAtual.split('/');
-            partes.pop();
-            carregarArquivos(partes.join('/'));
-        }
-
-        window.onload = () => carregarArquivos('');
-    </script>
+      });
+    };
+  </script>
 </body>
 </html>
