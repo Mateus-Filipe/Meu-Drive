@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerenciador de Arquivos - TV Box</title>
+    <title>Gerenciador Rápido - TV Box</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; user-select: none; }
@@ -58,8 +58,8 @@
         .card-item.selected { background-color: #094771 !important; border-color: #0078d4 !important; }
         .card-item.drag-over-folder { border: 2px dashed #0078d4 !important; background-color: #1c3b52 !important; }
 
-        .thumb-box { display: flex; align-items: center; justify-content: center; font-size: 32px; overflow: hidden; border-radius: 4px; background: #181818; position: relative; }
-        .thumb-box img, .thumb-box canvas, .thumb-box video { width: 100%; height: 100%; object-fit: cover; }
+        .thumb-box { display: flex; align-items: center; justify-content: center; font-size: 28px; overflow: hidden; border-radius: 4px; background: #181818; position: relative; }
+        .thumb-box img, .thumb-box canvas { width: 100%; height: 100%; object-fit: cover; }
 
         .nome { font-size: 12px; color: #dddddd; word-break: break-word; margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
@@ -137,7 +137,7 @@
         <div id="selection-box"></div>
     </div>
 
-    <!-- MODAL POPUP MÍDIA -->
+    <!-- MODALS -->
     <div class="modal" id="media-choice-modal">
         <div class="modal-content" style="max-width: 400px; text-align: center;">
             <span class="close-modal" onclick="fecharModalMedia()">&times;</span>
@@ -148,7 +148,6 @@
         </div>
     </div>
 
-    <!-- MODAL PLAYER -->
     <div class="modal" id="player-modal">
         <div class="modal-content">
             <span class="close-modal" onclick="fecharPlayer()">&times;</span>
@@ -161,7 +160,8 @@
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-        const IP_PONTE = "192.168.15.26"; // DIGITE O IP DA SUA TV BOX
+        // IP DA SUA TV BOX / SERVIDOR PYTHON
+        const IP_PONTE = "192.168.15.26";
         const PORTA_PONTE = "2101";
 
         let caminhoAtual = "";
@@ -175,6 +175,38 @@
         let arrastadoIndex = null;
 
         function getBaseUrl() { return `http://${IP_PONTE}:${PORTA_PONTE}`; }
+
+        // OBSERVER PARA LAZY LOADING DE MINIATURAS (Zero Travamentos)
+        const lazyObserver = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const thumbBox = entry.target;
+                    const url = thumbBox.dataset.url;
+                    const ext = thumbBox.dataset.ext;
+
+                    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
+                        const img = document.createElement('img');
+                        img.src = url;
+                        img.onerror = () => thumbBox.innerHTML = '🖼️';
+                        thumbBox.innerHTML = '';
+                        thumbBox.appendChild(img);
+                    } else if (ext === 'pdf') {
+                        const canvas = document.createElement('canvas');
+                        thumbBox.innerHTML = '';
+                        thumbBox.appendChild(canvas);
+                        pdfjsLib.getDocument(url).promise.then(pdf => {
+                            pdf.getPage(1).then(page => {
+                                const viewport = page.getViewport({ scale: 0.3 });
+                                canvas.height = viewport.height;
+                                canvas.width = viewport.width;
+                                page.render({ canvasContext: canvas.getContext('2d'), viewport });
+                            });
+                        }).catch(() => thumbBox.innerHTML = '📕');
+                    }
+                    observer.unobserve(thumbBox);
+                }
+            });
+        }, { root: document.getElementById('grid-arquivos'), rootMargin: '100px' });
 
         function toggleModoManual() {
             modoManual = !modoManual;
@@ -190,7 +222,7 @@
             atualizarInterface();
             
             const grid = document.getElementById('grid-arquivos');
-            grid.innerHTML = '<div style="color: #888; text-align: center; width: 100%;">Carregando...</div>';
+            grid.innerHTML = '<div style="color: #888; text-align: center; width: 100%;">Carregando rapidamente...</div>';
 
             try {
                 const targetUrl = `${getBaseUrl()}/${encodeURIComponent(caminho).replace(/%2F/g, '/')}`;
@@ -232,7 +264,6 @@
                 card.className = `card-item ${itensSelecionados.has(item.nome) ? 'selected' : ''}`;
                 card.draggable = true;
                 card.dataset.nome = item.nome;
-                card.dataset.isdir = item.isDir;
                 
                 const itemPath = caminhoAtual ? `${caminhoAtual}/${item.nome}` : item.nome;
                 const ext = item.nome.split('.').pop().toLowerCase();
@@ -243,27 +274,13 @@
 
                 if (item.isDir) {
                     thumbBox.innerHTML = '📁';
-                } else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
-                    thumbBox.innerHTML = `<img src="${itemUrl}" onerror="this.replaceWith('🖼️')">`;
+                } else if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf'].includes(ext)) {
+                    thumbBox.innerHTML = ext === 'pdf' ? '📕' : '🖼️';
+                    thumbBox.dataset.url = itemUrl;
+                    thumbBox.dataset.ext = ext;
+                    lazyObserver.observe(thumbBox);
                 } else if (['mp4', 'mov', 'mkv', 'webm', 'avi'].includes(ext)) {
-                    // GERAR THUMBNAIL DE VÍDEO
-                    const video = document.createElement('video');
-                    video.src = `${itemUrl}#t=0.5`;
-                    video.preload = 'metadata';
-                    video.muted = true;
-                    thumbBox.appendChild(video);
-                } else if (ext === 'pdf') {
-                    // GERAR THUMBNAIL DE PDF
-                    const canvas = document.createElement('canvas');
-                    thumbBox.appendChild(canvas);
-                    pdfjsLib.getDocument(itemUrl).promise.then(pdf => {
-                        pdf.getPage(1).then(page => {
-                            const viewport = page.getViewport({ scale: 0.3 });
-                            canvas.height = viewport.height;
-                            canvas.width = viewport.width;
-                            page.render({ canvasContext: canvas.getContext('2d'), viewport });
-                        });
-                    }).catch(() => thumbBox.innerHTML = '📄');
+                    thumbBox.innerHTML = '🎬';
                 } else {
                     thumbBox.innerHTML = '📄';
                 }
@@ -347,7 +364,6 @@
             });
         }
 
-        // CLIQUE DIREITO EM ÁREA VAZIA DA PASTA (ITEM 9)
         document.getElementById('grid-arquivos').oncontextmenu = (e) => {
             if (e.target.id === 'grid-arquivos' || e.target.classList.contains('grid-container')) {
                 e.preventDefault();
@@ -363,9 +379,7 @@
                 <div onclick="criarNovaPasta()">📁 Nova Pasta</div>
                 <div onclick="document.getElementById('file-input').click()">📤 Upload de Arquivos</div>
             `;
-            if (itemRecortado) {
-                html += `<div onclick="acaoColar()">📋 Colar Aqui</div>`;
-            }
+            if (itemRecortado) html += `<div onclick="acaoColar()">📋 Colar Aqui</div>`;
             html += `<div onclick="carregarArquivos(caminhoAtual)">🔄 Recarregar</div>`;
             
             menu.innerHTML = html;
@@ -380,7 +394,7 @@
             });
         }
 
-        // ARRASTAR CAIXA DE SELEÇÃO AZUL
+        // SELEÇÃO POR CAIXA AZUL
         const gridBox = document.getElementById('grid-arquivos');
         const selBox = document.getElementById('selection-box');
         let isSelecting = false, startX = 0, startY = 0;
@@ -392,10 +406,8 @@
             startX = e.clientX - rect.left + gridBox.scrollLeft;
             startY = e.clientY - rect.top + gridBox.scrollTop;
 
-            selBox.style.left = `${startX}px`;
-            selBox.style.top = `${startY}px`;
-            selBox.style.width = '0px';
-            selBox.style.height = '0px';
+            selBox.style.left = `${startX}px`; selBox.style.top = `${startY}px`;
+            selBox.style.width = '0px'; selBox.style.height = '0px';
             selBox.style.display = 'block';
 
             if (!e.ctrlKey) itensSelecionados.clear();
@@ -412,10 +424,8 @@
             const left = Math.min(currentX, startX);
             const top = Math.min(currentY, startY);
 
-            selBox.style.left = `${left}px`;
-            selBox.style.top = `${top}px`;
-            selBox.style.width = `${width}px`;
-            selBox.style.height = `${height}px`;
+            selBox.style.left = `${left}px`; selBox.style.top = `${top}px`;
+            selBox.style.width = `${width}px`; selBox.style.height = `${height}px`;
 
             document.querySelectorAll('.card-item').forEach(card => {
                 const cRect = {
@@ -439,7 +449,6 @@
             }
         };
 
-        // ABRIR MÍDIA
         function fecharModalMedia() { document.getElementById('media-choice-modal').style.display = 'none'; }
 
         function abrirMidiaSelecao(tipo) {
@@ -486,7 +495,6 @@
             }
         }
 
-        // FAVORITOS
         function carregarFavoritos() {
             const favs = JSON.parse(localStorage.getItem('fav_paths') || '[]');
             const container = document.getElementById('favoritos-lista');
@@ -523,7 +531,6 @@
             carregarFavoritos();
         }
 
-        // MENU DE CONTEXTO COM FAVORITAR (ITEM 8)
         function abrirMenuContexto(x, y, item) {
             const menu = document.getElementById('context-menu');
             const naLixeira = caminhoAtual.startsWith('.LIXEIRA_TVBOX');
@@ -539,12 +546,8 @@
                     <div onclick="acaoRenomear()">✏️ Renomear</div>
                     <div onclick="acaoRecortar()">✂️ Recortar</div>
                 `;
-                if (item.isDir) {
-                    html += `<div onclick="adicionarFavoritoPath('${targetPath}')">⭐ Fixar nos Favoritos</div>`;
-                }
-                if (itemRecortado) {
-                    html += `<div onclick="acaoColar()">📋 Colar Aqui</div>`;
-                }
+                if (item.isDir) html += `<div onclick="adicionarFavoritoPath('${targetPath}')">⭐ Fixar nos Favoritos</div>`;
+                if (itemRecortado) html += `<div onclick="acaoColar()">📋 Colar Aqui</div>`;
                 html += `
                     <div onclick="acaoBaixar()">⬇️ Baixar</div>
                     <div onclick="acaoMoverLixeira()" style="color: #ff6b6b;">🗑️ Mover para Lixeira</div>
@@ -628,7 +631,6 @@
             carregarArquivos('.LIXEIRA_TVBOX');
         }
 
-        // UPLOAD CORRIGIDO
         const dropZone = document.getElementById('drop-zone');
         dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('drop-active'); };
         dropZone.ondragleave = () => dropZone.classList.remove('drop-active');
