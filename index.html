@@ -13,7 +13,7 @@
     body { margin: 0; background-color: #191919; color: #e3e3e3; display: flex; height: 100vh; overflow: hidden; }
     
     #sidebar { width: 240px; background: #202020; padding: 16px; border-right: 1px solid #2d2d2d; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; flex-shrink: 0; }
-    .sidebar-btn { font-size: 13px; font-weight: 500; color: #ccc; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 6px; transition: 0.2s; flex: 1; overflow: hidden; }
+    .sidebar-btn { font-size: 13px; font-weight: 500; color: #ccc; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 6px; transition: 0.2s; width: 100%; height: auto; }
     .sidebar-btn:hover, .sidebar-btn.active { background: #2f2f2f; color: #8ab4f8; }
     .sidebar-fav-item { display: flex; align-items: center; justify-content: space-between; gap: 4px; border-radius: 6px; }
     .sidebar-fav-item:hover { background: #2f2f2f; }
@@ -31,17 +31,17 @@
     .address-bar-container { display: flex; align-items: center; gap: 8px; background: #252525; padding: 6px 12px; border-radius: 8px; border: 1px solid #333; }
     
     .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #aaa; background: #1e1e1e; padding: 6px 12px; border-radius: 6px; border: 1px solid #333; flex: 1; overflow-x: auto; }
-    .crumb-item { color: #eee; cursor: pointer; display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 4px; transition: 0.2s; }
+    .crumb-item { color: #eee; cursor: pointer; display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 4px; transition: 0.2s; white-space: nowrap; }
     .crumb-item:hover { background: #333; color: #8ab4f8; }
     .crumb-separator { color: #666; font-size: 11px; }
 
-    .toolbar-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .toolbar-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
     
     /* Barra de Pesquisa */
     .search-box { display: flex; align-items: center; background: #222; border: 1px solid #3d3d3d; border-radius: 6px; padding: 4px 10px; min-width: 220px; }
     .search-box input { background: transparent; border: none; outline: none; color: #fff; font-size: 13px; width: 100%; margin-left: 6px; }
 
-    .btn-tool { background: #282828; color: #ccc; border: 1px solid #3d3d3d; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px; transition: 0.2s; }
+    .btn-tool { background: #282828; color: #ccc; border: 1px solid #3d3d3d; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px; transition: 0.2s; height: 32px; }
     .btn-tool:hover { background: #333; color: #fff; border-color: #8ab4f8; }
     
     .dropdown { position: relative; display: inline-block; }
@@ -50,14 +50,18 @@
     .dropdown-item { padding: 8px 16px; cursor: pointer; display: flex; align-items: center; gap: 10px; color: #eee; }
     .dropdown-item:hover { background: #3a3a3a; }
 
-    /* Exibição em Grid / Modos de Visualização */
-    .grid { display: grid; gap: 12px; min-height: 250px; padding-bottom: 80px; }
+    /* Exibição em Grid / Modos de Visualização sem esticar */
+    .grid { display: grid; gap: 12px; width: 100%; align-content: start; align-items: start; padding-bottom: 80px; }
+    
     .grid.view-xl { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
     .grid.view-xl .preview-box { height: 160px; }
+    
     .grid.view-lg { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
     .grid.view-lg .preview-box { height: 120px; }
+    
     .grid.view-md { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
     .grid.view-md .preview-box { height: 90px; }
+    
     .grid.view-sm { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
     .grid.view-sm .preview-box { height: 60px; }
 
@@ -73,18 +77,18 @@
     .grid.view-content .card { flex-direction: row; align-items: center; height: 48px; padding: 8px 16px; }
     .grid.view-content .preview-box { width: 32px; height: 32px; }
 
-    .card { background: #222; border-radius: 8px; padding: 8px; border: 1px solid #2e2e2e; display: flex; flex-direction: column; gap: 6px; transition: 0.1s; cursor: pointer; position: relative; }
+    .card { background: #222; border-radius: 8px; padding: 8px; border: 1px solid #2e2e2e; display: flex; flex-direction: column; gap: 6px; transition: 0.1s; cursor: pointer; position: relative; height: fit-content; }
     .card:hover { background: #2a2a2a; border-color: #8ab4f8; }
     .card.selected { border-color: #8ab4f8; background: #2b394e !important; }
 
     .drag-over-target { border: 2px dashed #8ab4f8 !important; background: #2f3e58 !important; }
 
-    .preview-box { background: #141414; border-radius: 6px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; pointer-events: none; }
+    .preview-box { background: #141414; border-radius: 6px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; pointer-events: none; width: 100%; }
     .preview-box img, .preview-box video, .preview-box canvas { width: 100%; height: 100%; object-fit: cover; }
     
-    .file-name { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .file-name { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
 
-    /* Painel Lateral / Inferior de Detalhes e Visualização */
+    /* Painéis Laterais */
     #detailsPanel { width: 260px; background: #202020; border-left: 1px solid #2d2d2d; padding: 16px; display: none; flex-direction: column; gap: 12px; font-size: 13px; }
     #previewPanel { width: 300px; background: #202020; border-left: 1px solid #2d2d2d; padding: 16px; display: none; flex-direction: column; gap: 12px; align-items: center; justify-content: center; }
 
@@ -98,7 +102,7 @@
     .menu-shortcut { color: #888; font-size: 11px; }
     .menu-divider { height: 1px; background: #3d3d3d; margin: 4px 0; }
 
-    /* Modal do Visualizador Mídia / Pop-up de Arquivos */
+    /* Modal do Visualizador Mídia */
     #mediaModal { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.88); z-index: 2000; flex-direction: column; align-items: center; justify-content: space-between; padding: 20px; box-sizing: border-box; }
     .modal-header { width: 100%; display: flex; justify-content: space-between; align-items: center; max-width: 1000px; }
     .modal-title { font-size: 16px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80%; }
@@ -118,7 +122,7 @@
 
     .modal-footer-toolbar { display: flex; gap: 12px; background: #222; border: 1px solid #333; padding: 8px 16px; border-radius: 30px; }
 
-    /* Modal de Propriedades (Imagem 4) */
+    /* Modal de Propriedades */
     #propsModal { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 3000; align-items: center; justify-content: center; }
     .props-dialog { width: 360px; background: #242424; border: 1px solid #454545; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; flex-direction: column; overflow: hidden; font-size: 12px; }
     .props-header { background: #1f1f1f; padding: 10px 14px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; font-weight: 600; }
@@ -161,7 +165,7 @@
         <button class="btn-tool" id="btnEsvaziarLixeira" style="display:none; color: #ff6b6b;" onclick="esvaziarLixeiraDefinitivo()">🗑️ Esvaziar Lixeira</button>
         <div style="flex:1;"></div>
 
-        <!-- Menu Classificar (Imagem 2) -->
+        <!-- Menu Classificar -->
         <div class="dropdown">
           <button class="btn-tool" onclick="toggleDropdown(event, 'dropSort')">⇅ Classificar ▾</button>
           <div id="dropSort" class="dropdown-menu">
@@ -176,7 +180,7 @@
           </div>
         </div>
 
-        <!-- Menu Visualizar (Imagem 1) -->
+        <!-- Menu Visualizar -->
         <div class="dropdown">
           <button class="btn-tool" onclick="toggleDropdown(event, 'dropView')">☰ Visualizar ▾</button>
           <div id="dropView" class="dropdown-menu">
@@ -232,13 +236,12 @@
     </div>
 
     <div class="modal-footer-toolbar">
-      <!-- Botões Corrigidos conforme Tópico 2 -->
       <button class="btn-tool" onclick="baixarItemAtualModal()">📥 Baixar</button>
       <button class="btn-tool" onclick="abrirAbaItemAtualModal()">↗️ Abrir em nova guia</button>
     </div>
   </div>
 
-  <!-- Modal de Propriedades da Pasta (Imagem 4) -->
+  <!-- Modal de Propriedades da Pasta -->
   <div id="propsModal">
     <div class="props-dialog">
       <div class="props-header">
@@ -291,7 +294,7 @@
     let emLixeira = false;
     
     // Múltipla Seleção
-    let itensSelecionados = []; // Guarda URLs dos selecionados
+    let itensSelecionados = [];
     let ultimoIndiceClicado = -1;
 
     let ordenacaoAtual = 'name';
@@ -306,7 +309,6 @@
     const EXT_AUD = ['mp3', 'wav', 'ogg', 'aac', 'flac', 'm4a'];
     const EXT_TXT = ['txt', 'json', 'xml', 'log', 'csv', 'md', 'js', 'css', 'html', 'py', 'php', 'sh'];
 
-    // LocalStorage
     function obterLixeira() { return JSON.parse(localStorage.getItem('lixeira_drive') || '[]'); }
     function salvarLixeira(itens) { localStorage.setItem('lixeira_drive', JSON.stringify(itens)); }
     function obterFavoritos() { return JSON.parse(localStorage.getItem('favoritos_drive') || '[]'); }
@@ -413,12 +415,10 @@
       }
     }
 
-    /* BUSCA CORRIGIDA (Tópico 7) */
     function filtrarArquivos() {
       renderizarGrid();
     }
 
-    /* ARRASTAR E SOLTAR MANUAL / ORGANIZAÇÃO LIVRE (Tópico 9) */
     function iniciarDragItem(e, url, isFolder, name, idx) {
       e.dataTransfer.setData('text/plain', JSON.stringify({ url, isFolder, name, index: idx }));
       e.dataTransfer.effectAllowed = 'move';
@@ -447,7 +447,6 @@
       try {
         const data = JSON.parse(rawData);
         
-        // Reordenação Manual no Modo Livre
         if (ordenacaoAtual === 'manual' && typeof targetIndex === 'number') {
           const movedItem = listaExibidaAtual.splice(data.index, 1)[0];
           listaExibidaAtual.splice(targetIndex, 0, movedItem);
@@ -474,7 +473,6 @@
       }
     }
 
-    /* FAVORITOS COM OPÇÃO DE REMOVER NA SIDEBAR (Tópico 8) */
     function toggleFavorito() {
       if (itensSelecionados.length === 0) return;
       let favs = obterFavoritos();
@@ -631,7 +629,6 @@
       atualizarPaineis();
     }
 
-    /* SELEÇÃO COM SHIFT E CTRL (Tópico 5) */
     function selecionarCard(e, url, idx) {
       if (e) e.stopPropagation();
 
@@ -657,7 +654,6 @@
       renderizarGrid();
     }
 
-    /* SELEÇÃO POR CAIXINHA / ARRASTE (Tópico 4) */
     let selecionandoArrasto = false;
     let startX = 0, startY = 0;
 
@@ -698,7 +694,6 @@
       box.style.width = `${width}px`;
       box.style.height = `${height}px`;
 
-      // Verificar colisão com os cards
       const boxRect = box.getBoundingClientRect();
       listaExibidaAtual.forEach((item, idx) => {
         const cardEl = document.getElementById(`card-${idx}`);
@@ -762,7 +757,6 @@
       } catch (e) {}
     }
 
-    /* MODAL DE MÍDIA / POP-UP CORRIGIDO (Tópicos 1 e 2) */
     function executarAbrir(url, isFolder, name) {
       if (emLixeira) return;
       if (isFolder) { carregarArquivos(url); return; }
@@ -829,7 +823,6 @@
       indiceMediaAtual = -1;
     }
 
-    /* CORREÇÃO DOS BOTÕES (Tópico 2) */
     function baixarItemAtualModal() {
       if (indiceMediaAtual !== -1) {
         let item = listaExibidaAtual[indiceMediaAtual];
@@ -869,7 +862,6 @@
       }
     }
 
-    /* MENUS DE CONTEXTO & PROPRIEDADES DA PASTA (Tópicos 6) */
     function exibirContextMenuCard(e, url, idx, cardEl) {
       e.preventDefault();
       e.stopPropagation();
@@ -905,7 +897,6 @@
       menu.style.top = `${Math.min(y, window.innerHeight - 220)}px`;
     }
 
-    /* MODAL DE PROPRIEDADES DA PASTA (Imagem 4) */
     function abrirPropriedadesPasta() {
       const modal = document.getElementById('propsModal');
       const body = document.getElementById('propsBody');
