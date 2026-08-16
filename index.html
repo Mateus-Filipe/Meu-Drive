@@ -425,7 +425,7 @@
           let absoluteUrlObj = new URL(href, pastaAtual);
           let targetPath = absoluteUrlObj.pathname;
 
-          if (!targetPath.startsWith(pathAtualCanonical) || targetPath === pathCanonical) return;
+          if (!targetPath.startsWith(pathAtualCanonical) || targetPath === pathAtualCanonical) return;
 
           let relPath = targetPath.substring(pathAtualCanonical.length);
           let partes = relPath.split('/').filter(Boolean);
@@ -656,7 +656,6 @@
       try {
         const data = JSON.parse(rawData);
 
-        /* Reordenação Manual */
         if (ordenacaoAtual === 'manual' && typeof targetIndex === 'number' && data.index !== undefined) {
           if (data.index !== targetIndex) {
             const itemMovido = listaExibidaAtual.splice(data.index, 1)[0];
@@ -1045,7 +1044,6 @@
       }
     }
 
-    /* Correção 1: Execução em Nova Guia sem Forçar Download */
     function abrirItemEmNovaAba(url, name, ext) {
       ext = (ext || '').toLowerCase();
       if (EXT_VID.includes(ext) || EXT_IMG.includes(ext) || EXT_AUD.includes(ext)) {
@@ -1141,7 +1139,6 @@
       menu.style.top = `${Math.min(y, window.innerHeight - 220)}px`;
     }
 
-    /* Correção 2: Varredura Completa para Tamanho Real de Subpastas */
     async function calcularTamanhoPasta(urlPasta) {
       try {
         const res = await fetch(urlPasta);
