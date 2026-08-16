@@ -82,12 +82,12 @@
 
     .drag-over-target { border: 2px dashed #8ab4f8 !important; background: #2f3e58 !important; }
 
-    .preview-box { background: #141414; border-radius: 6px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; pointer-events: none; width: 100%; font-size: 24px; }
+    .preview-box { background: #141414; border-radius: 6px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; pointer-events: none; width: 100%; }
     .preview-box img, .preview-box video, .preview-box canvas { width: 100%; height: 100%; object-fit: cover; }
     
     .file-name { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
     .file-path-sub { font-size: 10px; color: #777; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; margin-top: -4px; }
-    .manual-drag-handle { position: absolute; top: 4px; right: 4px; font-size: 10px; color: #8ab4f8; background: rgba(0,0,0,0.6); padding: 2px 4px; border-radius: 3px; display: none; cursor: grab; }
+    .manual-drag-handle { position: absolute; top: 4px; right: 4px; font-size: 10px; color: #8ab4f8; background: rgba(0,0,0,0.4); padding: 2px 4px; border-radius: 3px; display: none; }
     .mode-manual .manual-drag-handle { display: block; }
 
     #detailsPanel { width: 260px; background: #202020; border-left: 1px solid #2d2d2d; padding: 16px; display: none; flex-direction: column; gap: 12px; font-size: 13px; }
@@ -166,6 +166,7 @@
           <button class="btn-tool" onclick="toggleDropdown(event, 'dropSort')">⇅ Classificar ▾</button>
           <div id="dropSort" class="dropdown-menu">
             <div class="dropdown-item" onclick="definirOrdenacao('name')">• Nome</div>
+            <div class="dropdown-item" onclick="definirOrdenacao('date')">Data de modificação</div>
             <div class="dropdown-item" onclick="definirOrdenacao('type')">Tipo</div>
             <div class="dropdown-item" onclick="definirOrdenacao('manual')">✋ Organização Manual / Livre</div>
             <div class="menu-divider"></div>
@@ -292,7 +293,7 @@
 
     let buscaGlobalId = 0;
     let buscandoGlobalmente = false;
-    let arrastadoIndiceManual = null;
+    let itemArrastadoManualIndex = null;
 
     const EXT_IMG = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'];
     const EXT_VID = ['mp4', 'mkv', 'webm', 'mov', 'avi'];
@@ -310,6 +311,14 @@
       const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
       const i = Math.floor(Math.log(bytes) / Math.log(k));
       return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    async function obterTamanhoUrl(url) {
+      try {
+        const res = await fetch(url, { method: 'HEAD' });
+        const size = res.headers.get('content-length');
+        return size ? parseInt(size, 10) : 0;
+      } catch { return 0; }
     }
 
     function toggleDropdown(e, id) {
@@ -343,7 +352,7 @@
     function definirOrdenacao(criterio) {
       ordenacaoAtual = criterio;
       if (criterio === 'manual') {
-        document.getElementById('status').innerText = '✋ Organização Manual ativa: Arraste e solte qualquer arquivo ou pasta para alterar sua ordem.';
+        document.getElementById('status').innerText = '✋ Organização Manual ativa: Arraste e solte os cards para reorganizar a ordem.';
         carregarOrdemManualSalva();
       } else {
         document.getElementById('status').innerText = '';
@@ -383,76 +392,6 @@
 
     function recarregarPastaAtual() {
       carregarArquivos(pastaAtual);
-    }
-
-    function resetarNavegacao() {
-      carregarArquivos(SERVIDOR_BASE);
-    }
-
-    function abrirLixeira() {
-      emLixeira = true;
-      pastaAtual = 'lixeira://';
-      itensSelecionados = [];
-      atualizarSidebarActive('btnTrash');
-      document.getElementById('btnEsvaziarLixeira').style.display = 'block';
-      document.getElementById('status').innerText = 'Exibindo Lixeira';
-      atualizarBreadcrumb();
-
-      listaArquivosAtual = obterLixeira().map(item => ({
-        ...item,
-        isFolder: item.isFolder || false,
-        ext: item.ext || (item.isFolder ? 'folder' : 'file')
-      }));
-
-      renderizarGrid();
-    }
-
-    function esvaziarLixeiraDefinitivo() {
-      if (confirm('Tem certeza de que deseja esvaziar a lixeira permanentemente?')) {
-        salvarLixeira([]);
-        abrirLixeira();
-      }
-    }
-
-    function atualizarSidebarActive(id) {
-      document.querySelectorAll('.sidebar-btn').forEach(btn => btn.classList.remove('active'));
-      const activeBtn = document.getElementById(id);
-      if (activeBtn) activeBtn.classList.add('active');
-    }
-
-    function atualizarBreadcrumb() {
-      const container = document.getElementById('breadcrumb');
-      container.innerHTML = '';
-
-      if (emLixeira) {
-        container.innerHTML = '<span class="crumb-item">🗑️ Lixeira</span>';
-        return;
-      }
-
-      let rel = pastaAtual.replace(SERVIDOR_BASE, '');
-      let partes = rel.split('/').filter(Boolean);
-      
-      let rootCrumb = document.createElement('span');
-      rootCrumb.className = 'crumb-item';
-      rootCrumb.innerHTML = '💻 Este Computador';
-      rootCrumb.onclick = () => carregarArquivos(SERVIDOR_BASE);
-      container.appendChild(rootCrumb);
-
-      let urlAcumulada = SERVIDOR_BASE;
-      partes.forEach((p, idx) => {
-        let sep = document.createElement('span');
-        sep.className = 'crumb-separator';
-        sep.innerText = '❯';
-        container.appendChild(sep);
-
-        urlAcumulada += p + '/';
-        let crumb = document.createElement('span');
-        crumb.className = 'crumb-item';
-        crumb.innerText = decodeURIComponent(p);
-        let target = urlAcumulada;
-        crumb.onclick = () => carregarArquivos(target);
-        container.appendChild(crumb);
-      });
     }
 
     async function carregarArquivos(targetUrl) {
@@ -615,147 +554,497 @@
       }
     }
 
-    function renderizarGrid() {
-      const grid = document.getElementById('gridContent');
-      grid.innerHTML = '';
-      grid.classList.toggle('mode-manual', ordenacaoAtual === 'manual');
+    let selecionandoArrasto = false;
+    let startX = 0, startY = 0;
 
-      let lista = [...listaArquivosAtual];
+    function iniciarSelecaoArrasto(e) {
+      if (e.button !== 0 || e.target.closest('.card') || e.target.closest('#toolbarActions')) return;
 
-      const termo = document.getElementById('searchInput').value.toLowerCase().trim();
-      if (termo && !buscandoGlobalmente) {
-        lista = lista.filter(i => i.name.toLowerCase().includes(termo));
-      } else if (buscandoGlobalmente) {
-        lista = [...listaExibidaAtual];
+      const mainEl = document.getElementById('main');
+      const rect = mainEl.getBoundingClientRect();
+
+      selecionandoArrasto = true;
+      startX = e.clientX - rect.left + mainEl.scrollLeft;
+      startY = e.clientY - rect.top + mainEl.scrollTop;
+
+      const box = document.getElementById('selectionBox');
+      box.style.left = `${startX}px`;
+      box.style.top = `${startY}px`;
+      box.style.width = '0px';
+      box.style.height = '0px';
+      box.style.display = 'block';
+
+      if (!e.ctrlKey && !e.shiftKey) {
+        itensSelecionados = [];
+        renderizarGrid();
       }
 
-      if (ordenacaoAtual === 'name') {
-        lista.sort((a,b) => a.isFolder === b.isFolder ? a.name.localeCompare(b.name, undefined, {numeric: true}) : (a.isFolder ? -1 : 1));
-      } else if (ordenacaoAtual === 'type') {
-        lista.sort((a,b) => a.isFolder === b.isFolder ? a.ext.localeCompare(b.ext) : (a.isFolder ? -1 : 1));
-      }
-
-      if (ordemDirecao === 'desc' && ordenacaoAtual !== 'manual') {
-        lista.reverse();
-      }
-
-      listaExibidaAtual = lista;
-
-      listaExibidaAtual.forEach((item, idx) => {
-        const card = document.createElement('div');
-        card.className = `card ${itensSelecionados.includes(item.url) ? 'selected' : ''}`;
-        card.id = `card-${idx}`;
-        
-        if (ordenacaoAtual === 'manual') {
-          card.draggable = true;
-          card.ondragstart = (e) => arrastarInicioManual(e, idx);
-          card.ondragover = (e) => e.preventDefault();
-          card.ondrop = (e) => soltarManual(e, idx);
-        }
-
-        card.onclick = (e) => selecionarCard(e, item, idx);
-        card.ondblclick = () => abrirItem(item);
-        card.oncontextmenu = (e) => exibirContextMenuCard(e, item);
-
-        let iconoPreview = '📄';
-        if (item.isFolder) iconoPreview = '📁';
-        else if (EXT_IMG.includes(item.ext)) iconoPreview = `<img src="${item.url}" loading="lazy">`;
-        else if (EXT_VID.includes(item.ext)) iconoPreview = '🎬';
-        else if (EXT_AUD.includes(item.ext)) iconoPreview = '🎵';
-
-        card.innerHTML = `
-          <div class="manual-drag-handle">:: Arrastar</div>
-          <div class="preview-box">${iconoPreview}</div>
-          <div class="file-name" title="${item.name}">${item.name}</div>
-          ${buscandoGlobalmente ? `<div class="file-path-sub">${item.pathRelative}</div>` : ''}
-        `;
-
-        grid.appendChild(card);
-      });
-
-      document.getElementById('info').innerText = `${listaExibidaAtual.length} item(ns) | ${itensSelecionados.length} selecionado(s)`;
+      document.addEventListener('mousemove', moverSelecaoArrasto);
+      document.addEventListener('mouseup', finalizarSelecaoArrasto);
     }
 
-    function arrastarInicioManual(e, index) {
-      arrastadoIndiceManual = index;
+    function moverSelecaoArrasto(e) {
+      if (!selecionandoArrasto) return;
+
+      const mainEl = document.getElementById('main');
+      const rect = mainEl.getBoundingClientRect();
+
+      let currentX = e.clientX - rect.left + mainEl.scrollLeft;
+      let currentY = e.clientY - rect.top + mainEl.scrollTop;
+
+      let left = Math.min(startX, currentX);
+      let top = Math.min(startY, currentY);
+      let width = Math.abs(currentX - startX);
+      let height = Math.abs(currentY - startY);
+
+      const box = document.getElementById('selectionBox');
+      box.style.left = `${left}px`;
+      box.style.top = `${top}px`;
+      box.style.width = `${width}px`;
+      box.style.height = `${height}px`;
+
+      listaExibidaAtual.forEach((item, idx) => {
+        const cardEl = document.getElementById(`card-${idx}`);
+        if (!cardEl) return;
+
+        const cardLeft = cardEl.offsetLeft;
+        const cardTop = cardEl.offsetTop;
+        const cardRight = cardLeft + cardEl.offsetWidth;
+        const cardBottom = cardTop + cardEl.offsetHeight;
+
+        let colide = !(left + width < cardLeft || left > cardRight || top + height < cardTop || top > cardBottom);
+
+        if (colide) {
+          if (!itensSelecionados.includes(item.url)) itensSelecionados.push(item.url);
+        }
+      });
+
+      renderizarGrid();
+    }
+
+    function finalizarSelecaoArrasto() {
+      selecionandoArrasto = false;
+      document.getElementById('selectionBox').style.display = 'none';
+      document.removeEventListener('mousemove', moverSelecaoArrasto);
+      document.removeEventListener('mouseup', finalizarSelecaoArrasto);
+    }
+
+    function iniciarDragItem(e, url, isFolder, name, idx) {
+      e.dataTransfer.setData('text/plain', JSON.stringify({ url, isFolder, name, index: idx }));
       e.dataTransfer.effectAllowed = 'move';
     }
 
-    function soltarManual(e, targetIndex) {
+    function permitirDropPasta(e, el) {
       e.preventDefault();
-      if (arrastadoIndiceManual === null || arrastadoIndiceManual === targetIndex) return;
+      e.stopPropagation();
+      el.classList.add('drag-over-target');
+    }
 
-      const itemMovido = listaExibidaAtual.splice(arrastadoIndiceManual, 1)[0];
-      listaExibidaAtual.splice(targetIndex, 0, itemMovido);
-      listaArquivosAtual = [...listaExibidaAtual];
+    function sairDropPasta(e, el) {
+      e.preventDefault();
+      el.classList.remove('drag-over-target');
+    }
 
+    function executarDropPasta(e, targetFolderUrl) {
+      e.preventDefault();
+      document.getElementById('status').innerText = 'Mover arquivos fisicamente requer suporte a gravação no servidor HTTP da TV Box.';
+    }
+
+    function tratarDragStartManual(e, idx) {
+      itemArrastadoManualIndex = idx;
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', idx);
+    }
+
+    function tratarDragOverManual(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+    }
+
+    function tratarDropManual(e, targetIdx) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (itemArrastadoManualIndex === null || itemArrastadoManualIndex === targetIdx) return;
+
+      const itemMovido = listaExibidaAtual.splice(itemArrastadoManualIndex, 1)[0];
+      listaExibidaAtual.splice(targetIdx, 0, itemMovido);
+
+      itemArrastadoManualIndex = null;
       salvarOrdemManual();
       renderizarGrid();
     }
 
-    function selecionarCard(e, item, idx) {
+    async function renderizarPDFThumb(url, canvasId) {
+      try {
+        const loadingTask = pdfjsLib.getDocument(url);
+        const pdf = await loadingTask.promise;
+        const page = await pdf.getPage(1);
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        const context = canvas.getContext('2d');
+        const viewport = page.getViewport({ scale: 0.3 });
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+        await page.render({ canvasContext: context, viewport: viewport }).promise;
+      } catch(e) {}
+    }
+
+    function renderizarGrid() {
+      const grid = document.getElementById('gridContent');
+      grid.innerHTML = '';
+
+      let lista = [...listaArquivosAtual];
+
+      const termo = document.getElementById('searchInput').value.toLowerCase().trim();
+      const modoGlobal = document.getElementById('checkSearchGlobal').checked;
+
+      if (buscandoGlobalmente && modoGlobal) {
+        lista = [...listaExibidaAtual];
+      } else if (termo.length > 0) {
+        lista = lista.filter(i => i.name.toLowerCase().includes(termo));
+      }
+
+      if (ordenacaoAtual === 'manual') {
+        document.body.classList.add('mode-manual');
+        const salva = localStorage.getItem('ordem_manual_' + pastaAtual);
+        if (salva) {
+          try {
+            const ordemUrls = JSON.parse(salva);
+            lista.sort((a, b) => {
+              let idxA = ordemUrls.indexOf(a.url);
+              let idxB = ordemUrls.indexOf(b.url);
+              if (idxA === -1) idxA = 9999;
+              if (idxB === -1) idxB = 9999;
+              return idxA - idxB;
+            });
+          } catch(e){}
+        }
+      } else {
+        document.body.classList.remove('mode-manual');
+        if (ordenacaoAtual === 'name') {
+          lista.sort((a, b) => {
+            if (a.isFolder !== b.isFolder) return a.isFolder ? -1 : 1;
+            return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+          });
+        } else if (ordenacaoAtual === 'type') {
+          lista.sort((a, b) => {
+            if (a.isFolder !== b.isFolder) return a.isFolder ? -1 : 1;
+            let cmp = a.ext.localeCompare(b.ext);
+            return cmp !== 0 ? cmp : a.name.localeCompare(b.name);
+          });
+        } else if (ordenacaoAtual === 'date') {
+          lista.sort((a, b) => {
+            if (a.isFolder !== b.isFolder) return a.isFolder ? -1 : 1;
+            return a.name.localeCompare(b.name);
+          });
+        }
+
+        if (ordemDirecao === 'desc') {
+          lista.reverse();
+        }
+      }
+
+      listaExibidaAtual = lista;
+
+      if (lista.length === 0) {
+        grid.innerHTML = '<div style="color:#888; padding:20px;">Nenhum arquivo ou pasta encontrado.</div>';
+        return;
+      }
+
+      lista.forEach((item, idx) => {
+        const card = document.createElement('div');
+        card.className = 'card' + (itensSelecionados.includes(item.url) ? ' selected' : '');
+        card.id = `card-${idx}`;
+        card.setAttribute('data-index', idx);
+
+        if (ordenacaoAtual === 'manual') {
+          card.draggable = true;
+          card.ondragstart = (e) => tratarDragStartManual(e, idx);
+          card.ondragover = (e) => tratarDragOverManual(e);
+          card.ondrop = (e) => tratarDropManual(e, idx);
+        } else {
+          card.draggable = true;
+          card.ondragstart = (e) => iniciarDragItem(e, item.url, item.isFolder, item.name, idx);
+          if (item.isFolder) {
+            card.ondragover = (e) => permitirDropPasta(e, card);
+            card.ondragleave = (e) => sairDropPasta(e, card);
+            card.ondrop = (e) => executarDropPasta(e, item.url);
+          }
+        }
+
+        card.onclick = (e) => selecionarItem(e, item, idx);
+        card.ondblclick = () => abrirItem(item);
+        card.oncontextmenu = (e) => exibirContextMenu(e, idx);
+
+        let previewHtml = '';
+        if (item.isFolder) {
+          previewHtml = '<div style="font-size:32px;">📁</div>';
+        } else if (EXT_IMG.includes(item.ext)) {
+          previewHtml = `<img src="${item.url}" loading="lazy" alt="${item.name}">`;
+        } else if (EXT_VID.includes(item.ext)) {
+          previewHtml = `<video src="${item.url}#t=0.5" preload="metadata" muted></video>`;
+        } else if (item.ext === 'pdf') {
+          previewHtml = `<canvas id="pdf-canvas-${idx}"></canvas>`;
+          renderizarPDFThumb(item.url, `pdf-canvas-${idx}`);
+        } else if (EXT_AUD.includes(item.ext)) {
+          previewHtml = '<div style="font-size:28px;">🎵</div>';
+        } else if (EXT_TXT.includes(item.ext)) {
+          previewHtml = '<div style="font-size:28px;">📄</div>';
+        } else {
+          previewHtml = '<div style="font-size:28px;">📦</div>';
+        }
+
+        card.innerHTML = `
+          <div class="manual-drag-handle">⋮⋮</div>
+          <div class="preview-box">${previewHtml}</div>
+          <div class="file-name" title="${item.name}">${item.name}</div>
+          ${buscandoGlobalmente ? `<div class="file-path-sub" title="${item.pathRelative}">${item.pathRelative}</div>` : ''}
+        `;
+
+        grid.appendChild(card);
+      });
+    }
+
+    function selecionarItem(e, item, idx) {
       e.stopPropagation();
-      if (e.ctrlKey) {
+      if (e.ctrlKey || e.metaKey) {
         if (itensSelecionados.includes(item.url)) {
           itensSelecionados = itensSelecionados.filter(u => u !== item.url);
         } else {
           itensSelecionados.push(item.url);
         }
       } else if (e.shiftKey && ultimoIndiceClicado !== -1) {
-        const inicio = Math.min(ultimoIndiceClicado, idx);
-        const fim = Math.max(ultimoIndiceClicado, idx);
-        for (let i = inicio; i <= fim; i++) {
-          if (!itensSelecionados.includes(listaExibidaAtual[i].url)) {
-            itensSelecionados.push(listaExibidaAtual[i].url);
-          }
-        }
+        const start = Math.min(ultimoIndiceClicado, idx);
+        const end = Math.max(ultimoIndiceClicado, idx);
+        itensSelecionados = listaExibidaAtual.slice(start, end + 1).map(i => i.url);
       } else {
         itensSelecionados = [item.url];
       }
       ultimoIndiceClicado = idx;
       renderizarGrid();
-      atualizarPaineisModais(item);
-    }
-
-    function atualizarPaineisModais(item) {
-      const detailsContent = document.getElementById('detailsContent');
-      detailsContent.innerHTML = `
-        <b>Nome:</b> ${item.name}<br>
-        <b>Tipo:</b> ${item.isFolder ? 'Pasta' : item.ext.toUpperCase()}<br>
-        <b>Caminho:</b> ${item.pathRelative || item.name}
-      `;
-
-      const previewContent = document.getElementById('previewContent');
-      if (EXT_IMG.includes(item.ext)) {
-        previewContent.innerHTML = `<img src="${item.url}" style="max-width:100%; max-height:200px; border-radius:6px;">`;
-      } else if (EXT_VID.includes(item.ext)) {
-        previewContent.innerHTML = `<video src="${item.url}" controls style="max-width:100%; max-height:200px; border-radius:6px;"></video>`;
-      } else {
-        previewContent.innerHTML = `<div style="font-size:48px;">${item.isFolder ? '📁' : '📄'}</div>`;
-      }
+      atualizarPainelDetalhes();
+      atualizarPainelVisualizacao();
     }
 
     function abrirItem(item) {
       if (item.isFolder) {
         carregarArquivos(item.url);
-      } else if (EXT_IMG.includes(item.ext) || EXT_VID.includes(item.ext) || EXT_AUD.includes(item.ext) || EXT_TXT.includes(item.ext)) {
-        abrirModalMedia(item);
       } else {
-        baixarUrl(item.url, item.name);
+        const idx = listaExibidaAtual.findIndex(i => i.url === item.url);
+        if (idx !== -1) {
+          if (EXT_IMG.includes(item.ext) || EXT_VID.includes(item.ext) || EXT_AUD.includes(item.ext) || EXT_TXT.includes(item.ext)) {
+            abrirModalMedia(idx);
+          } else {
+            abrirEmNovaAbaUrl(item.url, item.name);
+          }
+        }
       }
     }
 
-    function abrirModalMedia(item) {
-      indiceMediaAtual = listaExibidaAtual.findIndex(i => i.url === item.url);
-      const modal = document.getElementById('mediaModal');
-      document.getElementById('modalTitle').innerText = item.name;
+    function atualizarBreadcrumb() {
+      const bc = document.getElementById('breadcrumb');
+      bc.innerHTML = '';
 
+      const relativePath = pastaAtual.replace(SERVIDOR_BASE, '');
+      const partes = relativePath.split('/').filter(Boolean);
+
+      let homeCrumb = document.createElement('span');
+      homeCrumb.className = 'crumb-item';
+      homeCrumb.innerHTML = '💻 Início';
+      homeCrumb.onclick = () => carregarArquivos(SERVIDOR_BASE);
+      bc.appendChild(homeCrumb);
+
+      let currentAcc = SERVIDOR_BASE;
+      partes.forEach((p, idx) => {
+        let sep = document.createElement('span');
+        sep.className = 'crumb-separator';
+        sep.innerText = '>';
+        bc.appendChild(sep);
+
+        currentAcc += p + '/';
+        let target = currentAcc;
+
+        let itemCrumb = document.createElement('span');
+        itemCrumb.className = 'crumb-item';
+        itemCrumb.innerText = decodeURIComponent(p);
+        itemCrumb.onclick = () => carregarArquivos(target);
+        bc.appendChild(itemCrumb);
+      });
+    }
+
+    function resetarNavegacao() {
+      carregarArquivos(SERVIDOR_BASE);
+    }
+
+    function voltarPasta() {
+      if (pastaAtual === SERVIDOR_BASE) return;
+      let urlObj = new URL(pastaAtual);
+      let parts = urlObj.pathname.split('/').filter(Boolean);
+      parts.pop();
+      let newPath = parts.join('/');
+      let newUrl = urlObj.origin + (newPath ? '/' + newPath + '/' : '/files/');
+      carregarArquivos(newUrl);
+    }
+
+    function atualizarSidebarActive(idBtn) {
+      document.querySelectorAll('.sidebar-btn').forEach(b => b.classList.remove('active'));
+      const btn = document.getElementById(idBtn);
+      if (btn) btn.classList.add('active');
+    }
+
+    function exibirContextMenu(e, idx) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const item = listaExibidaAtual[idx];
+      if (!itensSelecionados.includes(item.url)) {
+        itensSelecionados = [item.url];
+        ultimoIndiceClicado = idx;
+        renderizarGrid();
+      }
+
+      const menu = document.getElementById('contextMenu');
+      menu.style.display = 'block';
+      menu.style.left = `${Math.min(e.clientX, window.innerWidth - 230)}px`;
+      menu.style.top = `${Math.min(e.clientY, window.innerHeight - 250)}px`;
+
+      const btnRestaurar = document.getElementById('btnRestaurar');
+      if (emLixeira) {
+        btnRestaurar.style.display = 'flex';
+      } else {
+        btnRestaurar.style.display = 'none';
+      }
+
+      const favs = obterFavoritos();
+      const txtFav = document.getElementById('txtFavorito');
+      if (favs.some(f => f.url === item.url)) {
+        txtFav.innerText = '⭐ Remover dos Favoritos';
+      } else {
+        txtFav.innerText = '⭐ Adicionar aos Favoritos';
+      }
+
+      atualizarPainelDetalhes();
+      atualizarPainelVisualizacao();
+    }
+
+    function exibirContextMenuFundo(e) {
+      e.preventDefault();
+      fecharMenus();
+    }
+
+    function abrirItemSelecionado() {
+      if (itensSelecionados.length > 0) {
+        const item = listaExibidaAtual.find(i => i.url === itensSelecionados[0]);
+        if (item) abrirItem(item);
+      }
+      fecharMenus();
+    }
+
+    async function abrirEmNovaAbaUrl(url, name) {
+      try {
+        document.getElementById('status').innerText = `Carregando ${name} em nova aba...`;
+        const res = await fetch(url);
+        const blob = await res.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const novaAba = window.open(blobUrl, '_blank');
+        if (!novaAba) {
+          alert('O navegador bloqueou a abertura da nova aba. Por favor, permita pop-ups.');
+        }
+        document.getElementById('status').innerText = '';
+      } catch (err) {
+        window.open(url, '_blank');
+        document.getElementById('status').innerText = '';
+      }
+    }
+
+    function abrirNovaAba() {
+      if (itensSelecionados.length > 0) {
+        const item = listaExibidaAtual.find(i => i.url === itensSelecionados[0]);
+        if (item && !item.isFolder) {
+          abrirEmNovaAbaUrl(item.url, item.name);
+        } else if (item && item.isFolder) {
+          window.open(item.url, '_blank');
+        }
+      }
+      fecharMenus();
+    }
+
+    async function baixarItem(url, name) {
+      try {
+        document.getElementById('status').innerText = `Baixando ${name}...`;
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = name;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+        document.getElementById('status').innerText = 'Download concluído.';
+      } catch (err) {
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = name;
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    }
+
+    async function baixarSelecionado() {
+      fecharMenus();
+      if (itensSelecionados.length === 0) return;
+
+      if (itensSelecionados.length === 1) {
+        const item = listaExibidaAtual.find(i => i.url === itensSelecionados[0]);
+        if (item) baixarItem(item.url, item.name);
+      } else {
+        try {
+          document.getElementById('status').innerText = 'Criando arquivo ZIP...';
+          const zip = new JSZip();
+          for (let url of itensSelecionados) {
+            const item = listaExibidaAtual.find(i => i.url === url);
+            if (item && !item.isFolder) {
+              const res = await fetch(item.url);
+              const blob = await res.blob();
+              zip.file(item.name, blob);
+            }
+          }
+          const zipContent = await zip.generateAsync({ type: 'blob' });
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(zipContent);
+          link.download = 'arquivos_selecionados.zip';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          document.getElementById('status').innerText = 'Download do ZIP concluído.';
+        } catch(e) {
+          document.getElementById('status').innerText = 'Erro ao gerar ZIP: ' + e.message;
+        }
+      }
+    }
+
+    function abrirModalMedia(idx) {
+      indiceMediaAtual = idx;
+      const item = listaExibidaAtual[idx];
+      if (!item) return;
+
+      const modal = document.getElementById('mediaModal');
       const img = document.getElementById('modalImage');
       const vid = document.getElementById('modalVideo');
       const aud = document.getElementById('modalAudio');
       const txt = document.getElementById('modalText');
+      document.getElementById('modalTitle').innerText = item.name;
 
-      [img, vid, aud, txt].forEach(el => el.style.display = 'none');
+      img.style.display = 'none';
+      vid.style.display = 'none';
+      aud.style.display = 'none';
+      txt.style.display = 'none';
+      vid.pause();
+      aud.pause();
 
       if (EXT_IMG.includes(item.ext)) {
         img.src = item.url;
@@ -767,166 +1056,226 @@
         aud.src = item.url;
         aud.style.display = 'block';
       } else if (EXT_TXT.includes(item.ext)) {
-        fetch(item.url).then(r => r.text()).then(t => {
-          txt.innerText = t;
-          txt.style.display = 'block';
-        });
+        txt.innerText = 'Carregando texto...';
+        txt.style.display = 'block';
+        fetch(item.url)
+          .then(r => r.text())
+          .then(t => { txt.innerText = t; })
+          .catch(() => { txt.innerText = 'Erro ao carregar conteúdo do arquivo.'; });
       }
 
       modal.style.display = 'flex';
     }
 
     function fecharModalMedia() {
-      document.getElementById('mediaModal').style.display = 'none';
-      document.getElementById('modalVideo').pause();
-      document.getElementById('modalAudio').pause();
+      const modal = document.getElementById('mediaModal');
+      const vid = document.getElementById('modalVideo');
+      const aud = document.getElementById('modalAudio');
+      vid.pause();
+      aud.pause();
+      modal.style.display = 'none';
     }
 
     function navegarMedia(dir) {
-      indiceMediaAtual += dir;
-      if (indiceMediaAtual < 0) indiceMediaAtual = listaExibidaAtual.length - 1;
-      if (indiceMediaAtual >= listaExibidaAtual.length) indiceMediaAtual = 0;
-      
-      const proximo = listaExibidaAtual[indiceMediaAtual];
-      if (!proximo.isFolder) abrirModalMedia(proximo);
-    }
-
-    function abrirAbaItemAtualModal() {
-      if (indiceMediaAtual >= 0 && listaExibidaAtual[indiceMediaAtual]) {
-        const item = listaExibidaAtual[indiceMediaAtual];
-        abrirEmNovaGuiaPersonalizada(item.url, item.name, item.ext);
+      let novoIndex = indiceMediaAtual + dir;
+      while (novoIndex >= 0 && novoIndex < listaExibidaAtual.length) {
+        let item = listaExibidaAtual[novoIndex];
+        if (EXT_IMG.includes(item.ext) || EXT_VID.includes(item.ext) || EXT_AUD.includes(item.ext) || EXT_TXT.includes(item.ext)) {
+          abrirModalMedia(novoIndex);
+          return;
+        }
+        novoIndex += dir;
       }
-    }
-
-    function abrirNovaAba() {
-      if (itensSelecionados.length > 0) {
-        const item = listaExibidaAtual.find(i => i.url === itensSelecionados[0]);
-        if (item) abrirEmNovaGuiaPersonalizada(item.url, item.name, item.ext);
-      }
-    }
-
-    function abrirEmNovaGuiaPersonalizada(url, nome, ext) {
-      const extLower = (ext || '').toLowerCase();
-      const novaAba = window.open('', '_blank');
-      if (!novaAba) return;
-
-      let conteudoHtml = '';
-
-      if (EXT_IMG.includes(extLower)) {
-        conteudoHtml = `<img src="${url}" style="max-width:100%; max-height:100vh; object-fit:contain;">`;
-      } else if (EXT_VID.includes(extLower)) {
-        conteudoHtml = `<video src="${url}" controls autoplay style="max-width:100%; max-height:100vh;"></video>`;
-      } else if (EXT_AUD.includes(extLower)) {
-        conteudoHtml = `<audio src="${url}" controls autoplay></audio>`;
-      } else {
-        novaAba.location.href = url;
-        return;
-      }
-
-      novaAba.document.write(`
-        <!DOCTYPE html>
-        <html lang="pt-br">
-        <head>
-          <meta charset="UTF-8">
-          <title>${nome || 'Visualização'}</title>
-          <style>
-            body { margin: 0; background: #0e0e0e; color: #fff; height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden; font-family: sans-serif; }
-          </style>
-        </head>
-        <body>
-          ${conteudoHtml}
-        </body>
-        </html>
-      `);
-      novaAba.document.close();
-    }
-
-    function baixarUrl(url, nome) {
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = nome || 'download';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
     }
 
     function baixarItemAtualModal() {
-      if (indiceMediaAtual >= 0 && listaExibidaAtual[indiceMediaAtual]) {
+      if (indiceMediaAtual >= 0 && indiceMediaAtual < listaExibidaAtual.length) {
         const item = listaExibidaAtual[indiceMediaAtual];
-        baixarUrl(item.url, item.name);
+        baixarItem(item.url, item.name);
       }
     }
 
-    function baixarSelecionado() {
-      itensSelecionados.forEach(url => {
-        const item = listaExibidaAtual.find(i => i.url === url);
-        if (item && !item.isFolder) baixarUrl(item.url, item.name);
-      });
+    function abrirAbaItemAtualModal() {
+      if (indiceMediaAtual >= 0 && indiceMediaAtual < listaExibidaAtual.length) {
+        const item = listaExibidaAtual[indiceMediaAtual];
+        abrirEmNovaAbaUrl(item.url, item.name);
+      }
     }
 
     function deletarSelecionados() {
+      fecharMenus();
       if (itensSelecionados.length === 0) return;
 
-      if (emLixeira) {
-        if (confirm('Deseja excluir estes itens permanentemente?')) {
-          let lixeira = obterLixeira().filter(l => !itensSelecionados.includes(l.url));
-          salvarLixeira(lixeira);
-          abrirLixeira();
+      const lixeira = obterLixeira();
+      itensSelecionados.forEach(url => {
+        const item = listaExibidaAtual.find(i => i.url === url);
+        if (item) {
+          lixeira.push(item);
         }
+      });
+      salvarLixeira(lixeira);
+      recarregarPastaAtual();
+    }
+
+    function abrirLixeira() {
+      emLixeira = true;
+      atualizarSidebarActive('btnTrash');
+      document.getElementById('btnEsvaziarLixeira').style.display = 'block';
+      document.getElementById('status').innerText = 'Exibindo itens na Lixeira';
+
+      const lixeira = obterLixeira();
+      listaArquivosAtual = [...lixeira];
+      renderizarGrid();
+
+      const bc = document.getElementById('breadcrumb');
+      bc.innerHTML = '<span class="crumb-item">🗑️ Lixeira</span>';
+    }
+
+    function restaurarItemLixeira() {
+      fecharMenus();
+      if (itensSelecionados.length === 0) return;
+
+      let lixeira = obterLixeira();
+      lixeira = lixeira.filter(item => !itensSelecionados.includes(item.url));
+      salvarLixeira(lixeira);
+
+      if (emLixeira) {
+        abrirLixeira();
       } else {
-        let lixeira = obterLixeira();
-        itensSelecionados.forEach(url => {
-          const item = listaExibidaAtual.find(i => i.url === url);
-          if (item && !lixeira.some(l => l.url === item.url)) {
-            lixeira.push(item);
-          }
-        });
-        salvarLixeira(lixeira);
         recarregarPastaAtual();
       }
     }
 
-    function restaurarItemLixeira() {
-      let lixeira = obterLixeira().filter(l => !itensSelecionados.includes(l.url));
-      salvarLixeira(lixeira);
-      abrirLixeira();
-    }
-
-    function exibirContextMenuCard(e, item) {
-      e.preventDefault();
-      e.stopPropagation();
-
-      if (!itensSelecionados.includes(item.url)) {
-        itensSelecionados = [item.url];
-        renderizarGrid();
+    function esvaziarLixeiraDefinitivo() {
+      if (confirm('Tem certeza que deseja esvaziar a lixeira?')) {
+        salvarLixeira([]);
+        abrirLixeira();
       }
-
-      const menu = document.getElementById('contextMenu');
-      document.getElementById('btnRestaurar').style.display = emLixeira ? 'flex' : 'none';
-      document.getElementById('btnNovaAba').style.display = item.isFolder ? 'none' : 'flex';
-
-      menu.style.left = `${e.clientX}px`;
-      menu.style.top = `${e.clientY}px`;
-      menu.style.display = 'block';
     }
 
-    function exibirContextMenuFundo(e) {
-      if (e.target.closest('.card')) return;
-      e.preventDefault();
-      itensSelecionados = [];
-      renderizarGrid();
+    function toggleFavorito() {
+      fecharMenus();
+      if (itensSelecionados.length === 0) return;
 
-      const menu = document.getElementById('contextMenu');
-      document.getElementById('btnRestaurar').style.display = 'none';
-      menu.style.left = `${e.clientX}px`;
-      menu.style.top = `${e.clientY}px`;
-      menu.style.display = 'block';
+      const favs = obterFavoritos();
+      const item = listaExibidaAtual.find(i => i.url === itensSelecionados[0]);
+      if (!item) return;
+
+      const index = favs.findIndex(f => f.url === item.url);
+      if (index !== -1) {
+        favs.splice(index, 1);
+      } else {
+        favs.push(item);
+      }
+      salvarFavoritos(favs);
     }
 
-    function abrirItemSelecionado() {
-      if (itensSelecionados.length > 0) {
-        const item = listaExibidaAtual.find(i => i.url === itensSelecionados[0]);
-        if (item) abrirItem(item);
+    function atualizarSidebarFavoritos() {
+      const container = document.getElementById('sidebarFavorites');
+      container.innerHTML = '';
+      const favs = obterFavoritos();
+
+      favs.forEach(f => {
+        const div = document.createElement('div');
+        div.className = 'sidebar-fav-item';
+
+        const btn = document.createElement('div');
+        btn.className = 'sidebar-btn';
+        btn.style.padding = '4px 6px';
+        btn.innerHTML = `${f.isFolder ? '📁' : '📄'} ${f.name}`;
+        btn.onclick = () => {
+          if (f.isFolder) carregarArquivos(f.url);
+          else abrirEmNovaAbaUrl(f.url, f.name);
+        };
+
+        const rm = document.createElement('button');
+        rm.className = 'btn-remove-fav';
+        rm.innerText = '✕';
+        rm.onclick = (e) => {
+          e.stopPropagation();
+          const novofavs = obterFavoritos().filter(item => item.url !== f.url);
+          salvarFavoritos(novofavs);
+        };
+
+        div.appendChild(btn);
+        div.appendChild(rm);
+        container.appendChild(div);
+      });
+    }
+
+    async function atualizarPainelDetalhes() {
+      const p = document.getElementById('detailsContent');
+      if (itensSelecionados.length === 0) {
+        p.innerHTML = 'Selecione um item para ver as propriedades.';
+        return;
+      }
+      const item = listaExibidaAtual.find(i => i.url === itensSelecionados[0]);
+      if (!item) return;
+
+      p.innerHTML = `
+        <b>Nome:</b> ${item.name}<br>
+        <b>Tipo:</b> ${item.isFolder ? 'Pasta' : item.ext.toUpperCase()}<br>
+        <b>Caminho:</b> ${item.pathRelative || item.name}<br>
+        <b>URL:</b> <a href="${item.url}" target="_blank" style="color:#8ab4f8; word-break:break-all;">Acessar</a>
+      `;
+
+      if (!item.isFolder) {
+        const tam = await obterTamanhoUrl(item.url);
+        if (tam > 0) p.innerHTML += `<br><b>Tamanho:</b> ${formatarTamanho(tam)}`;
+      }
+    }
+
+    function atualizarPainelVisualizacao() {
+      const p = document.getElementById('previewContent');
+      if (itensSelecionados.length === 0) {
+        p.innerHTML = 'Sem visualização';
+        return;
+      }
+      const item = listaExibidaAtual.find(i => i.url === itensSelecionados[0]);
+      if (!item) return;
+
+      if (EXT_IMG.includes(item.ext)) {
+        p.innerHTML = `<img src="${item.url}" style="max-width:100%; max-height:200px; border-radius:6px;">`;
+      } else if (EXT_VID.includes(item.ext)) {
+        p.innerHTML = `<video src="${item.url}" controls style="max-width:100%; max-height:200px; border-radius:6px;"></video>`;
+      } else if (EXT_AUD.includes(item.ext)) {
+        p.innerHTML = `<audio src="${item.url}" controls style="width:100%;"></audio>`;
+      } else {
+        p.innerHTML = `<div>${item.isFolder ? '📁 Pasta' : '📦 Arquivo'}</div>`;
+      }
+    }
+
+    async function abrirPropriedadesMenu() {
+      fecharMenus();
+      if (itensSelecionados.length === 0) return;
+
+      const item = listaExibidaAtual.find(i => i.url === itensSelecionados[0]);
+      if (!item) return;
+
+      const modal = document.getElementById('propsModal');
+      const title = document.getElementById('propsModalTitle');
+      const body = document.getElementById('propsBody');
+
+      title.innerText = 'Propriedades: ' + item.name;
+      let sizeText = 'Calculando...';
+
+      body.innerHTML = `
+        <div class="props-row"><span>Nome:</span> <span>${item.name}</span></div>
+        <div class="props-row"><span>Tipo:</span> <span>${item.isFolder ? 'Pasta de Arquivos' : item.ext.toUpperCase() + ' File'}</span></div>
+        <div class="props-row"><span>Caminho:</span> <span style="word-break:break-all;">${item.pathRelative || item.name}</span></div>
+        <div class="props-row"><span>Tamanho:</span> <span id="propsSizeVal">${sizeText}</span></div>
+        <div class="props-row"><span>URL Direta:</span> <span style="word-break:break-all;"><a href="${item.url}" target="_blank" style="color:#8ab4f8;">${item.url}</a></span></div>
+      `;
+
+      modal.style.display = 'flex';
+
+      if (!item.isFolder) {
+        const bytes = await obterTamanhoUrl(item.url);
+        const sizeSpan = document.getElementById('propsSizeVal');
+        if (sizeSpan) sizeSpan.innerText = formatarTamanho(bytes);
+      } else {
+        const sizeSpan = document.getElementById('propsSizeVal');
+        if (sizeSpan) sizeSpan.innerText = 'Pasta';
       }
     }
 
@@ -934,40 +1283,11 @@
       document.getElementById('propsModal').style.display = 'none';
     }
 
-    function abrirPropriedadesMenu() {
-      if (itensSelecionados.length === 0) return;
-      const item = listaExibidaAtual.find(i => i.url === itensSelecionados[0]);
-      if (!item) return;
-
-      const body = document.getElementById('propsBody');
-      body.innerHTML = `
-        <div class="props-row"><span>Nome:</span> <b>${item.name}</b></div>
-        <div class="props-row"><span>Tipo:</span> <b>${item.isFolder ? 'Pasta' : item.ext.toUpperCase()}</b></div>
-        <div class="props-row"><span>URL:</span> <b style="word-break:break-all;">${item.url}</b></div>
-      `;
-
-      document.getElementById('propsModal').style.display = 'flex';
-      fecharMenus();
-    }
-
-    function voltarPasta() {
-      if (emLixeira) {
-        resetarNavegacao();
-        return;
-      }
-      if (pastaAtual === SERVIDOR_BASE) return;
-      let rel = pastaAtual.replace(SERVIDOR_BASE, '').replace(/\/$/, '');
-      let partes = rel.split('/');
-      partes.pop();
-      let novaUrl = SERVIDOR_BASE + (partes.length > 0 ? partes.join('/') + '/' : '');
-      carregarArquivos(novaUrl);
-    }
-
     function tratarTeclas(e) {
       if (e.key === 'Escape') {
+        fecharMenus();
         fecharModalMedia();
         fecharPropriedades();
-        fecharMenus();
       } else if (e.key === 'Enter') {
         abrirItemSelecionado();
       } else if (e.key === 'Delete') {
@@ -975,43 +1295,10 @@
       }
     }
 
-    function atualizarSidebarFavoritos() {
-      const favs = obterFavoritos();
-      const container = document.getElementById('sidebarFavorites');
-      container.innerHTML = '';
-      favs.forEach(f => {
-        const div = document.createElement('div');
-        div.className = 'sidebar-fav-item';
-        div.innerHTML = `
-          <div class="sidebar-btn" style="flex:1;">⭐ ${f.name}</div>
-          <button class="btn-remove-fav" onclick="removerFavorito('${f.url}')">✕</button>
-        `;
-        div.querySelector('.sidebar-btn').onclick = () => carregarArquivos(f.url);
-        container.appendChild(div);
-      });
-    }
-
-    function toggleFavorito() {
-      if (itensSelecionados.length === 0) return;
-      const item = listaExibidaAtual.find(i => i.url === itensSelecionados[0]);
-      if (!item) return;
-
-      let favs = obterFavoritos();
-      if (!favs.some(f => f.url === item.url)) {
-        favs.push({ name: item.name, url: item.url });
-        salvarFavoritos(favs);
-      }
-      fecharMenus();
-    }
-
-    function removerFavorito(url) {
-      let favs = obterFavoritos().filter(f => f.url !== url);
-      salvarFavoritos(favs);
-    }
-
-    // Inicialização
-    atualizarSidebarFavoritos();
-    carregarArquivos(pastaAtual);
+    window.onload = () => {
+      atualizarSidebarFavoritos();
+      carregarArquivos(SERVIDOR_BASE);
+    };
   </script>
 </body>
 </html>
