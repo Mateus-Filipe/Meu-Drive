@@ -294,6 +294,9 @@
     let buscaGlobalId = 0;
     let buscandoGlobalmente = false;
 
+    // Cache em memória para evitar que o PDF.js re-renderize as miniaturas desnecessariamente
+    const pdfCache = {};
+
     const EXT_IMG = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'];
     const EXT_VID = ['mp4', 'mkv', 'webm', 'mov', 'avi'];
     const EXT_AUD = ['mp3', 'wav', 'ogg', 'aac', 'flac', 'm4a'];
@@ -582,6 +585,21 @@
     let selecionandoArrasto = false;
     let startX = 0, startY = 0;
 
+    // Atualiza apenas as classes no DOM sem renderizar o HTML inteiro do grid
+    function atualizarSelecaoDOM() {
+      listaExibidaAtual.forEach((item, idx) => {
+        const cardEl = document.getElementById(`card-${idx}`);
+        if (cardEl) {
+          if (itensSelecionados.includes(item.url)) {
+            cardEl.classList.add('selected');
+          } else {
+            cardEl.classList.remove('selected');
+          }
+        }
+      });
+      atualizarPaineis();
+    }
+
     function iniciarSelecaoArrasto(e) {
       if (e.button !== 0 || e.target.closest('.card') || e.target.closest('#toolbarActions')) return;
 
@@ -601,7 +619,7 @@
 
       if (!e.ctrlKey && !e.shiftKey) {
         itensSelecionados = [];
-        renderizarGrid();
+        atualizarSelecaoDOM();
       }
 
       document.addEventListener('mousemove', moverSelecaoArrasto);
@@ -644,7 +662,7 @@
         }
       });
 
-      renderizarGrid();
+      atualizarSelecaoDOM();
     }
 
     function finalizarSelecaoArrasto() {
@@ -918,7 +936,7 @@
         ultimoIndiceClicado = idx;
       }
 
-      renderizarGrid();
+      atualizarSelecaoDOM();
     }
 
     function atualizarPaineis() {
@@ -940,7 +958,16 @@
       }
     }
 
+    // Renderiza PDF com Cache em Memória ativado
     async function renderizarThumbnailPDF(url, elementId) {
+      const box = document.getElementById(elementId);
+      if (!box) return;
+
+      if (pdfCache[url]) {
+        box.innerHTML = `<img src="${pdfCache[url]}" style="width:100%; height:100%; object-fit:cover;">`;
+        return;
+      }
+
       try {
         const loadingTask = pdfjsLib.getDocument(url);
         const pdf = await loadingTask.promise;
@@ -953,8 +980,13 @@
         canvas.width = viewport.width;
 
         await page.render({ canvasContext: context, viewport: viewport }).promise;
-        const box = document.getElementById(elementId);
-        if (box) { box.innerHTML = ''; box.appendChild(canvas); }
+        
+        const dataUrl = canvas.toDataURL();
+        pdfCache[url] = dataUrl;
+
+        if (document.getElementById(elementId) === box) {
+          box.innerHTML = `<img src="${dataUrl}" style="width:100%; height:100%; object-fit:cover;">`;
+        }
       } catch (e) {}
     }
 
@@ -1218,7 +1250,7 @@
       if (e.target.closest('#sidebar') || e.target.closest('#mediaModal')) return;
       e.preventDefault();
       itensSelecionados = [];
-      renderizarGrid();
+      atualizarSelecaoDOM();
       abrirContextMenu(e.clientX, e.clientY, false);
     }
 
