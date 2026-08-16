@@ -82,12 +82,12 @@
 
     .drag-over-target { border: 2px dashed #8ab4f8 !important; background: #2f3e58 !important; }
 
-    .preview-box { background: #141414; border-radius: 6px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; pointer-events: none; width: 100%; }
+    .preview-box { background: #141414; border-radius: 6px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; pointer-events: none; width: 100%; font-size: 24px; }
     .preview-box img, .preview-box video, .preview-box canvas { width: 100%; height: 100%; object-fit: cover; }
     
     .file-name { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
     .file-path-sub { font-size: 10px; color: #777; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; margin-top: -4px; }
-    .manual-drag-handle { position: absolute; top: 4px; right: 4px; font-size: 10px; color: #8ab4f8; background: rgba(0,0,0,0.4); padding: 2px 4px; border-radius: 3px; display: none; }
+    .manual-drag-handle { position: absolute; top: 4px; right: 4px; font-size: 10px; color: #8ab4f8; background: rgba(0,0,0,0.6); padding: 2px 4px; border-radius: 3px; display: none; cursor: grab; }
     .mode-manual .manual-drag-handle { display: block; }
 
     #detailsPanel { width: 260px; background: #202020; border-left: 1px solid #2d2d2d; padding: 16px; display: none; flex-direction: column; gap: 12px; font-size: 13px; }
@@ -166,7 +166,6 @@
           <button class="btn-tool" onclick="toggleDropdown(event, 'dropSort')">⇅ Classificar ▾</button>
           <div id="dropSort" class="dropdown-menu">
             <div class="dropdown-item" onclick="definirOrdenacao('name')">• Nome</div>
-            <div class="dropdown-item" onclick="definirOrdenacao('date')">Data de modificação</div>
             <div class="dropdown-item" onclick="definirOrdenacao('type')">Tipo</div>
             <div class="dropdown-item" onclick="definirOrdenacao('manual')">✋ Organização Manual / Livre</div>
             <div class="menu-divider"></div>
@@ -293,6 +292,7 @@
 
     let buscaGlobalId = 0;
     let buscandoGlobalmente = false;
+    let arrastadoIndiceManual = null;
 
     const EXT_IMG = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'];
     const EXT_VID = ['mp4', 'mkv', 'webm', 'mov', 'avi'];
@@ -310,14 +310,6 @@
       const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
       const i = Math.floor(Math.log(bytes) / Math.log(k));
       return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-    }
-
-    async function obterTamanhoUrl(url) {
-      try {
-        const res = await fetch(url, { method: 'HEAD' });
-        const size = res.headers.get('content-length');
-        return size ? parseInt(size, 10) : 0;
-      } catch { return 0; }
     }
 
     function toggleDropdown(e, id) {
@@ -391,6 +383,76 @@
 
     function recarregarPastaAtual() {
       carregarArquivos(pastaAtual);
+    }
+
+    function resetarNavegacao() {
+      carregarArquivos(SERVIDOR_BASE);
+    }
+
+    function abrirLixeira() {
+      emLixeira = true;
+      pastaAtual = 'lixeira://';
+      itensSelecionados = [];
+      atualizarSidebarActive('btnTrash');
+      document.getElementById('btnEsvaziarLixeira').style.display = 'block';
+      document.getElementById('status').innerText = 'Exibindo Lixeira';
+      atualizarBreadcrumb();
+
+      listaArquivosAtual = obterLixeira().map(item => ({
+        ...item,
+        isFolder: item.isFolder || false,
+        ext: item.ext || (item.isFolder ? 'folder' : 'file')
+      }));
+
+      renderizarGrid();
+    }
+
+    function esvaziarLixeiraDefinitivo() {
+      if (confirm('Tem certeza de que deseja esvaziar a lixeira permanentemente?')) {
+        salvarLixeira([]);
+        abrirLixeira();
+      }
+    }
+
+    function atualizarSidebarActive(id) {
+      document.querySelectorAll('.sidebar-btn').forEach(btn => btn.classList.remove('active'));
+      const activeBtn = document.getElementById(id);
+      if (activeBtn) activeBtn.classList.add('active');
+    }
+
+    function atualizarBreadcrumb() {
+      const container = document.getElementById('breadcrumb');
+      container.innerHTML = '';
+
+      if (emLixeira) {
+        container.innerHTML = '<span class="crumb-item">🗑️ Lixeira</span>';
+        return;
+      }
+
+      let rel = pastaAtual.replace(SERVIDOR_BASE, '');
+      let partes = rel.split('/').filter(Boolean);
+      
+      let rootCrumb = document.createElement('span');
+      rootCrumb.className = 'crumb-item';
+      rootCrumb.innerHTML = '💻 Este Computador';
+      rootCrumb.onclick = () => carregarArquivos(SERVIDOR_BASE);
+      container.appendChild(rootCrumb);
+
+      let urlAcumulada = SERVIDOR_BASE;
+      partes.forEach((p, idx) => {
+        let sep = document.createElement('span');
+        sep.className = 'crumb-separator';
+        sep.innerText = '❯';
+        container.appendChild(sep);
+
+        urlAcumulada += p + '/';
+        let crumb = document.createElement('span');
+        crumb.className = 'crumb-item';
+        crumb.innerText = decodeURIComponent(p);
+        let target = urlAcumulada;
+        crumb.onclick = () => carregarArquivos(target);
+        container.appendChild(crumb);
+      });
     }
 
     async function carregarArquivos(targetUrl) {
@@ -553,714 +615,318 @@
       }
     }
 
-    let selecionandoArrasto = false;
-    let startX = 0, startY = 0;
+    function renderizarGrid() {
+      const grid = document.getElementById('gridContent');
+      grid.innerHTML = '';
+      grid.classList.toggle('mode-manual', ordenacaoAtual === 'manual');
 
-    function iniciarSelecaoArrasto(e) {
-      if (e.button !== 0 || e.target.closest('.card') || e.target.closest('#toolbarActions')) return;
+      let lista = [...listaArquivosAtual];
 
-      const mainEl = document.getElementById('main');
-      const rect = mainEl.getBoundingClientRect();
-
-      selecionandoArrasto = true;
-      startX = e.clientX - rect.left + mainEl.scrollLeft;
-      startY = e.clientY - rect.top + mainEl.scrollTop;
-
-      const box = document.getElementById('selectionBox');
-      box.style.left = `${startX}px`;
-      box.style.top = `${startY}px`;
-      box.style.width = '0px';
-      box.style.height = '0px';
-      box.style.display = 'block';
-
-      if (!e.ctrlKey && !e.shiftKey) {
-        itensSelecionados = [];
-        renderizarGrid();
+      const termo = document.getElementById('searchInput').value.toLowerCase().trim();
+      if (termo && !buscandoGlobalmente) {
+        lista = lista.filter(i => i.name.toLowerCase().includes(termo));
+      } else if (buscandoGlobalmente) {
+        lista = [...listaExibidaAtual];
       }
 
-      document.addEventListener('mousemove', moverSelecaoArrasto);
-      document.addEventListener('mouseup', finalizarSelecaoArrasto);
-    }
+      if (ordenacaoAtual === 'name') {
+        lista.sort((a,b) => a.isFolder === b.isFolder ? a.name.localeCompare(b.name, undefined, {numeric: true}) : (a.isFolder ? -1 : 1));
+      } else if (ordenacaoAtual === 'type') {
+        lista.sort((a,b) => a.isFolder === b.isFolder ? a.ext.localeCompare(b.ext) : (a.isFolder ? -1 : 1));
+      }
 
-    function moverSelecaoArrasto(e) {
-      if (!selecionandoArrasto) return;
+      if (ordemDirecao === 'desc' && ordenacaoAtual !== 'manual') {
+        lista.reverse();
+      }
 
-      const mainEl = document.getElementById('main');
-      const rect = mainEl.getBoundingClientRect();
-
-      let currentX = e.clientX - rect.left + mainEl.scrollLeft;
-      let currentY = e.clientY - rect.top + mainEl.scrollTop;
-
-      let left = Math.min(startX, currentX);
-      let top = Math.min(startY, currentY);
-      let width = Math.abs(currentX - startX);
-      let height = Math.abs(currentY - startY);
-
-      const box = document.getElementById('selectionBox');
-      box.style.left = `${left}px`;
-      box.style.top = `${top}px`;
-      box.style.width = `${width}px`;
-      box.style.height = `${height}px`;
+      listaExibidaAtual = lista;
 
       listaExibidaAtual.forEach((item, idx) => {
-        const cardEl = document.getElementById(`card-${idx}`);
-        if (!cardEl) return;
-
-        const cardLeft = cardEl.offsetLeft;
-        const cardTop = cardEl.offsetTop;
-        const cardRight = cardLeft + cardEl.offsetWidth;
-        const cardBottom = cardTop + cardEl.offsetHeight;
-
-        let colide = !(left + width < cardLeft || left > cardRight || top + height < cardTop || top > cardBottom);
-
-        if (colide) {
-          if (!itensSelecionados.includes(item.url)) itensSelecionados.push(item.url);
+        const card = document.createElement('div');
+        card.className = `card ${itensSelecionados.includes(item.url) ? 'selected' : ''}`;
+        card.id = `card-${idx}`;
+        
+        if (ordenacaoAtual === 'manual') {
+          card.draggable = true;
+          card.ondragstart = (e) => arrastarInicioManual(e, idx);
+          card.ondragover = (e) => e.preventDefault();
+          card.ondrop = (e) => soltarManual(e, idx);
         }
+
+        card.onclick = (e) => selecionarCard(e, item, idx);
+        card.ondblclick = () => abrirItem(item);
+        card.oncontextmenu = (e) => exibirContextMenuCard(e, item);
+
+        let iconoPreview = '📄';
+        if (item.isFolder) iconoPreview = '📁';
+        else if (EXT_IMG.includes(item.ext)) iconoPreview = `<img src="${item.url}" loading="lazy">`;
+        else if (EXT_VID.includes(item.ext)) iconoPreview = '🎬';
+        else if (EXT_AUD.includes(item.ext)) iconoPreview = '🎵';
+
+        card.innerHTML = `
+          <div class="manual-drag-handle">:: Arrastar</div>
+          <div class="preview-box">${iconoPreview}</div>
+          <div class="file-name" title="${item.name}">${item.name}</div>
+          ${buscandoGlobalmente ? `<div class="file-path-sub">${item.pathRelative}</div>` : ''}
+        `;
+
+        grid.appendChild(card);
       });
 
-      renderizarGrid();
+      document.getElementById('info').innerText = `${listaExibidaAtual.length} item(ns) | ${itensSelecionados.length} selecionado(s)`;
     }
 
-    function finalizarSelecaoArrasto() {
-      selecionandoArrasto = false;
-      document.getElementById('selectionBox').style.display = 'none';
-      document.removeEventListener('mousemove', moverSelecaoArrasto);
-      document.removeEventListener('mouseup', finalizarSelecaoArrasto);
-    }
-
-    function iniciarDragItem(e, url, isFolder, name, idx) {
-      e.dataTransfer.setData('text/plain', JSON.stringify({ url, isFolder, name, index: idx }));
+    function arrastarInicioManual(e, index) {
+      arrastadoIndiceManual = index;
       e.dataTransfer.effectAllowed = 'move';
     }
 
-    function permitirDropPasta(e, el) {
+    function soltarManual(e, targetIndex) {
       e.preventDefault();
-      e.stopPropagation();
-      el.classList.add('drag-over-target');
+      if (arrastadoIndiceManual === null || arrastadoIndiceManual === targetIndex) return;
+
+      const itemMovido = listaExibidaAtual.splice(arrastadoIndiceManual, 1)[0];
+      listaExibidaAtual.splice(targetIndex, 0, itemMovido);
+      listaArquivosAtual = [...listaExibidaAtual];
+
+      salvarOrdemManual();
+      renderizarGrid();
     }
 
-    function sairDropPasta(e, el) {
-      e.preventDefault();
+    function selecionarCard(e, item, idx) {
       e.stopPropagation();
-      el.classList.remove('drag-over-target');
-    }
-
-    async function soltarEmPasta(e, targetPastaUrl, el, targetIndex) {
-      e.preventDefault();
-      e.stopPropagation();
-      if (el) el.classList.remove('drag-over-target');
-
-      const rawData = e.dataTransfer.getData('text/plain');
-      if (!rawData) return;
-
-      try {
-        const data = JSON.parse(rawData);
-
-        if (ordenacaoAtual === 'manual' && typeof targetIndex === 'number' && data.index !== undefined) {
-          if (data.index !== targetIndex) {
-            const itemMovido = listaExibidaAtual.splice(data.index, 1)[0];
-            listaExibidaAtual.splice(targetIndex, 0, itemMovido);
-            salvarOrdemManual();
-            renderizarGrid();
-            document.getElementById('status').innerText = '✋ Ordem manual atualizada!';
+      if (e.ctrlKey) {
+        if (itensSelecionados.includes(item.url)) {
+          itensSelecionados = itensSelecionados.filter(u => u !== item.url);
+        } else {
+          itensSelecionados.push(item.url);
+        }
+      } else if (e.shiftKey && ultimoIndiceClicado !== -1) {
+        const inicio = Math.min(ultimoIndiceClicado, idx);
+        const fim = Math.max(ultimoIndiceClicado, idx);
+        for (let i = inicio; i <= fim; i++) {
+          if (!itensSelecionados.includes(listaExibidaAtual[i].url)) {
+            itensSelecionados.push(listaExibidaAtual[i].url);
           }
-          return;
         }
-
-        if (!data.url || data.url === targetPastaUrl) return;
-
-        let targetDir = targetPastaUrl.endsWith('/') ? targetPastaUrl : targetPastaUrl + '/';
-        let destUrl = targetDir + encodeURIComponent(data.name) + (data.isFolder ? '/' : '');
-
-        document.getElementById('status').innerText = `Movendo ${data.name}...`;
-
-        await fetch(data.url, {
-          method: 'MOVE',
-          headers: { 'Destination': destUrl }
-        });
-
-        document.getElementById('status').innerText = 'Item movido!';
-        carregarArquivos(pastaAtual);
-      } catch(err) {
-        document.getElementById('status').innerText = 'Ação concluída.';
+      } else {
+        itensSelecionados = [item.url];
       }
-    }
-
-    function toggleFavorito() {
-      if (itensSelecionados.length === 0) return;
-      let favs = obterFavoritos();
-      
-      itensSelecionados.forEach(url => {
-        let item = listaArquivosAtual.find(i => i.url === url) || listaExibidaAtual.find(i => i.url === url);
-        if (!item) return;
-        let idx = favs.findIndex(f => f.url === url);
-        if (idx >= 0) {
-          favs.splice(idx, 1);
-        } else {
-          favs.push({ name: item.name, url: item.url, isFolder: item.isFolder });
-        }
-      });
-
-      salvarFavoritos(favs);
-      fecharMenus();
-    }
-
-    function removerFavoritoUrl(url, e) {
-      if (e) e.stopPropagation();
-      let favs = obterFavoritos().filter(f => f.url !== url);
-      salvarFavoritos(favs);
-    }
-
-    function atualizarSidebarFavoritos() {
-      const container = document.getElementById('sidebarFavorites');
-      if (!container) return;
-      let favs = obterFavoritos();
-
-      if (favs.length === 0) {
-        container.innerHTML = '<div style="font-size: 11px; color: #555; padding: 4px 8px;">Nenhum favorito</div>';
-        return;
-      }
-
-      container.innerHTML = favs.map(f => {
-        let icon = f.isFolder ? '📁' : '📄';
-        return `
-          <div class="sidebar-fav-item">
-            <div class="sidebar-btn" title="${f.name}" onclick="executarAbrir('${f.url}', ${f.isFolder}, '${f.name}')">
-              <span>${icon}</span>
-              <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${f.name}</span>
-            </div>
-            <button class="btn-remove-fav" title="Remover dos Favoritos" onclick="removerFavoritoUrl('${f.url}', event)">✖</button>
-          </div>`;
-      }).join('');
-    }
-
-    function abrirLixeira() {
-      emLixeira = true;
-      itensSelecionados = [];
-      atualizarSidebarActive('btnTrash');
-      document.getElementById('btnEsvaziarLixeira').style.display = 'inline-flex';
-      
-      listaArquivosAtual = obterLixeira();
-      atualizarBreadcrumbLixeira();
+      ultimoIndiceClicado = idx;
       renderizarGrid();
+      atualizarPaineisModais(item);
     }
 
-    function atualizarSidebarActive(id) {
-      document.querySelectorAll('.sidebar-btn').forEach(b => b.classList.remove('active'));
-      const activeEl = document.getElementById(id);
-      if (activeEl) activeEl.classList.add('active');
-    }
-
-    function atualizarBreadcrumb() {
-      const breadcrumb = document.getElementById('breadcrumb');
-      const pathClean = pastaAtual.replace(SERVIDOR_BASE, '');
-      const partes = pathClean.split('/').filter(Boolean);
-
-      let html = `<div class="crumb-item" onclick="carregarArquivos('${SERVIDOR_BASE}')" ondragover="permitirDropPasta(event, this)" ondragleave="sairDropPasta(event, this)" ondrop="soltarEmPasta(event, '${SERVIDOR_BASE}', this)">💻 Este Computador</div>`;
-      let urlAcumulada = SERVIDOR_BASE;
-
-      partes.forEach((p) => {
-        if (p.toLowerCase() === 'files') return;
-        urlAcumulada += p + '/';
-        let target = urlAcumulada;
-        html += `<span class="crumb-separator">❯</span>`;
-        html += `<div class="crumb-item" onclick="carregarArquivos('${target}')" ondragover="permitirDropPasta(event, this)" ondragleave="sairDropPasta(event, this)" ondrop="soltarEmPasta(event, '${target}', this)">${decodeURIComponent(p)}</div>`;
-      });
-
-      breadcrumb.innerHTML = html;
-    }
-
-    function atualizarBreadcrumbLixeira() {
-      document.getElementById('breadcrumb').innerHTML = `
-        <div class="crumb-item">💻 Este Computador</div>
-        <span class="crumb-separator">❯</span>
-        <div class="crumb-item" style="color:#8ab4f8;">🗑️ Lixeira</div>
+    function atualizarPaineisModais(item) {
+      const detailsContent = document.getElementById('detailsContent');
+      detailsContent.innerHTML = `
+        <b>Nome:</b> ${item.name}<br>
+        <b>Tipo:</b> ${item.isFolder ? 'Pasta' : item.ext.toUpperCase()}<br>
+        <b>Caminho:</b> ${item.pathRelative || item.name}
       `;
-    }
 
-    function voltarPasta() {
-      if (emLixeira) { carregarArquivos(SERVIDOR_BASE); return; }
-      if (pastaAtual === SERVIDOR_BASE) return;
-      let partes = pastaAtual.replace(/\/$/, '').split('/');
-      partes.pop();
-      let novaUrl = partes.join('/') + '/';
-      if (novaUrl.length >= SERVIDOR_BASE.length) carregarArquivos(novaUrl);
-    }
-
-    function renderizarGrid() {
-      const gridEl = document.getElementById('gridContent');
-      const filtro = document.getElementById('searchInput').value.toLowerCase().trim();
-      const modoGlobal = document.getElementById('checkSearchGlobal').checked;
-
-      if (!modoGlobal) {
-        listaExibidaAtual = listaArquivosAtual.filter(item => item.name.toLowerCase().includes(filtro));
-      }
-
-      if (ordenacaoAtual !== 'manual') {
-        gridEl.classList.remove('mode-manual');
-        listaExibidaAtual.sort((a, b) => {
-          if (a.isFolder && !b.isFolder) return -1;
-          if (!a.isFolder && b.isFolder) return 1;
-          let res = a.name.localeCompare(b.name);
-          return ordemDirecao === 'asc' ? res : -res;
-        });
+      const previewContent = document.getElementById('previewContent');
+      if (EXT_IMG.includes(item.ext)) {
+        previewContent.innerHTML = `<img src="${item.url}" style="max-width:100%; max-height:200px; border-radius:6px;">`;
+      } else if (EXT_VID.includes(item.ext)) {
+        previewContent.innerHTML = `<video src="${item.url}" controls style="max-width:100%; max-height:200px; border-radius:6px;"></video>`;
       } else {
-        gridEl.classList.add('mode-manual');
+        previewContent.innerHTML = `<div style="font-size:48px;">${item.isFolder ? '📁' : '📄'}</div>`;
       }
-
-      gridEl.innerHTML = listaExibidaAtual.map((item, idx) => {
-        let isVid = EXT_VID.includes(item.ext);
-        let isImg = EXT_IMG.includes(item.ext);
-        let isAud = EXT_AUD.includes(item.ext);
-        let isTxt = EXT_TXT.includes(item.ext);
-        let isPdf = item.ext === 'pdf';
-
-        let icon = '📄';
-        if (item.isFolder) icon = '📁';
-        else if (isPdf) icon = '📕';
-        else if (isAud) icon = '🎵';
-        else if (isTxt) icon = '📝';
-
-        let isSelected = itensSelecionados.includes(item.url);
-        let dragDropPastaAttrs = `ondragover="permitirDropPasta(event, this)" ondragleave="sairDropPasta(event, this)" ondrop="soltarEmPasta(event, '${item.isFolder ? item.url : pastaAtual}', this, ${idx})"`;
-
-        return `
-          <div class="card ${isSelected ? 'selected' : ''}" id="card-${idx}" draggable="true" 
-               ondragstart="iniciarDragItem(event, '${item.url}', ${item.isFolder}, '${item.name}', ${idx})"
-               ${dragDropPastaAttrs}
-               onclick="selecionarCard(event, '${item.url}', ${idx})"
-               ondblclick="executarAbrir('${item.url}', ${item.isFolder}, '${item.name}')"
-               oncontextmenu="exibirContextMenuCard(event, '${item.url}', ${idx}, this)">
-            <span class="manual-drag-handle">⋮⋮ mover</span>
-            <div class="preview-box" id="prev-${idx}">
-              ${isImg ? `<img src="${item.url}" loading="lazy">` : ''}
-              ${isVid ? `<video src="${item.url}" preload="metadata"></video>` : ''}
-              ${!isImg && !isVid ? `<span style="font-size:32px">${icon}</span>` : ''}
-            </div>
-            <div class="file-name" id="name-${idx}">${item.name}</div>
-            ${modoGlobal ? `<div class="file-path-sub" title="${item.pathRelative}">${item.pathRelative}</div>` : ''}
-          </div>`;
-      }).join('');
-
-      listaExibidaAtual.forEach((item, idx) => {
-        if (item.ext === 'pdf') renderizarThumbnailPDF(item.url, `prev-${idx}`);
-      });
-
-      atualizarPaineis();
     }
 
-    function selecionarCard(e, url, idx) {
-      if (e) e.stopPropagation();
-
-      if (e && e.shiftKey && ultimoIndiceClicado !== -1) {
-        let start = Math.min(ultimoIndiceClicado, idx);
-        let end = Math.max(ultimoIndiceClicado, idx);
-        itensSelecionados = [];
-        for (let i = start; i <= end; i++) {
-          if (listaExibidaAtual[i]) itensSelecionados.push(listaExibidaAtual[i].url);
-        }
-      } else if (e && (e.ctrlKey || e.metaKey)) {
-        if (itensSelecionados.includes(url)) {
-          itensSelecionados = itensSelecionados.filter(u => u !== url);
-        } else {
-          itensSelecionados.push(url);
-        }
-        ultimoIndiceClicado = idx;
+    function abrirItem(item) {
+      if (item.isFolder) {
+        carregarArquivos(item.url);
+      } else if (EXT_IMG.includes(item.ext) || EXT_VID.includes(item.ext) || EXT_AUD.includes(item.ext) || EXT_TXT.includes(item.ext)) {
+        abrirModalMedia(item);
       } else {
-        itensSelecionados = [url];
-        ultimoIndiceClicado = idx;
-      }
-
-      renderizarGrid();
-    }
-
-    function atualizarPaineis() {
-      const details = document.getElementById('detailsContent');
-      const preview = document.getElementById('previewContent');
-
-      if (itensSelecionados.length === 1) {
-        let item = listaArquivosAtual.find(i => i.url === itensSelecionados[0]) || listaExibidaAtual.find(i => i.url === itensSelecionados[0]);
-        if (item) {
-          details.innerHTML = `<b>${item.name}</b><br><br>Tipo: ${item.isFolder ? 'Pasta' : item.ext.toUpperCase()}<br>Caminho: ${item.pathRelative || item.url}`;
-          preview.innerHTML = EXT_IMG.includes(item.ext) ? `<img src="${item.url}" style="max-width:100%; border-radius:6px;">` : `📂 ${item.name}`;
-        }
-      } else if (itensSelecionados.length > 1) {
-        details.innerHTML = `${itensSelecionados.length} itens selecionados`;
-        preview.innerHTML = `📁 Seleção Múltipla`;
-      } else {
-        details.innerHTML = `Selecione um item para ver as propriedades.`;
-        preview.innerHTML = `Sem visualização`;
+        baixarUrl(item.url, item.name);
       }
     }
 
-    async function renderizarThumbnailPDF(url, elementId) {
-      try {
-        const loadingTask = pdfjsLib.getDocument(url);
-        const pdf = await loadingTask.promise;
-        const page = await pdf.getPage(1);
-        const viewport = page.getViewport({ scale: 0.3 });
-
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
-
-        await page.render({ canvasContext: context, viewport: viewport }).promise;
-        const box = document.getElementById(elementId);
-        if (box) { box.innerHTML = ''; box.appendChild(canvas); }
-      } catch (e) {}
-    }
-
-    function executarAbrir(url, isFolder, name) {
-      if (emLixeira) return;
-      if (isFolder) { carregarArquivos(url); return; }
-
-      let idx = listaExibidaAtual.findIndex(i => i.url === url);
-      if (idx !== -1) abrirModalMedia(idx);
-      else abrirItemEmNovaAba(url, name, (name.split('.').pop() || ''));
-    }
-
-    async function abrirModalMedia(index) {
-      if (index < 0 || index >= listaExibidaAtual.length) return;
-      indiceMediaAtual = index;
-      let item = listaExibidaAtual[index];
-
+    function abrirModalMedia(item) {
+      indiceMediaAtual = listaExibidaAtual.findIndex(i => i.url === item.url);
       const modal = document.getElementById('mediaModal');
+      document.getElementById('modalTitle').innerText = item.name;
+
       const img = document.getElementById('modalImage');
       const vid = document.getElementById('modalVideo');
       const aud = document.getElementById('modalAudio');
       const txt = document.getElementById('modalText');
 
-      document.getElementById('modalTitle').innerText = item.name;
+      [img, vid, aud, txt].forEach(el => el.style.display = 'none');
 
-      img.style.display = 'none'; img.src = '';
-      vid.style.display = 'none'; vid.src = ''; vid.pause();
-      aud.style.display = 'none'; aud.src = ''; aud.pause();
-      txt.style.display = 'none'; txt.innerText = '';
-
-      let ext = item.ext;
-
-      if (EXT_IMG.includes(ext)) { img.src = item.url; img.style.display = 'block'; }
-      else if (EXT_VID.includes(ext)) { vid.src = item.url; vid.style.display = 'block'; }
-      else if (EXT_AUD.includes(ext)) { aud.src = item.url; aud.style.display = 'block'; }
-      else if (EXT_TXT.includes(ext)) {
-        txt.style.display = 'block';
-        txt.innerText = 'Carregando...';
-        try {
-          let res = await fetch(item.url);
-          txt.innerText = await res.text();
-        } catch { txt.innerText = 'Erro ao carregar documento.'; }
-      } else {
-        abrirItemEmNovaAba(item.url, item.name, ext);
-        return;
+      if (EXT_IMG.includes(item.ext)) {
+        img.src = item.url;
+        img.style.display = 'block';
+      } else if (EXT_VID.includes(item.ext)) {
+        vid.src = item.url;
+        vid.style.display = 'block';
+      } else if (EXT_AUD.includes(item.ext)) {
+        aud.src = item.url;
+        aud.style.display = 'block';
+      } else if (EXT_TXT.includes(item.ext)) {
+        fetch(item.url).then(r => r.text()).then(t => {
+          txt.innerText = t;
+          txt.style.display = 'block';
+        });
       }
 
       modal.style.display = 'flex';
     }
 
-    function navegarMedia(direcao) {
-      if (indiceMediaAtual === -1) return;
-      let novoIndice = indiceMediaAtual + direcao;
-      while (novoIndice >= 0 && novoIndice < listaExibidaAtual.length) {
-        if (!listaExibidaAtual[novoIndice].isFolder) {
-          abrirModalMedia(novoIndice);
-          return;
-        }
-        novoIndice += direcao;
-      }
-    }
-
     function fecharModalMedia() {
+      document.getElementById('mediaModal').style.display = 'none';
       document.getElementById('modalVideo').pause();
       document.getElementById('modalAudio').pause();
-      document.getElementById('mediaModal').style.display = 'none';
-      indiceMediaAtual = -1;
     }
 
-    async function baixarArquivoBlob(url, name) {
-      try {
-        const response = await fetch(url);
-        const blob = await response.blob();
-        const blobUrl = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = blobUrl;
-        a.download = name || 'download';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(blobUrl);
-      } catch (e) {
-        window.open(url, '_blank');
-      }
-    }
-
-    async function baixarSelecionado() {
-      if (itensSelecionados.length === 0) return;
-
-      if (itensSelecionados.length === 1) {
-        let item = listaArquivosAtual.find(i => i.url === itensSelecionados[0]) || listaExibidaAtual.find(i => i.url === itensSelecionados[0]);
-        if (item && !item.isFolder) {
-          await baixarArquivoBlob(item.url, item.name);
-        }
-      } else {
-        document.getElementById('status').innerText = 'Compactando arquivos em ZIP... Aguarde...';
-        const zip = new JSZip();
-        let arquivosInclusos = 0;
-
-        for (let url of itensSelecionados) {
-          let item = listaArquivosAtual.find(i => i.url === url) || listaExibidaAtual.find(i => i.url === url);
-          if (item && !item.isFolder) {
-            try {
-              const res = await fetch(item.url);
-              const blob = await res.blob();
-              zip.file(item.name, blob);
-              arquivosInclusos++;
-            } catch (err) { }
-          }
-        }
-
-        if (arquivosInclusos > 0) {
-          const zipContent = await zip.generateAsync({ type: 'blob' });
-          const zipUrl = URL.createObjectURL(zipContent);
-          const a = document.createElement('a');
-          a.href = zipUrl;
-          a.download = `arquivos_selecionados_${Date.now()}.zip`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(zipUrl);
-          document.getElementById('status').innerText = 'Download do ZIP concluído!';
-        } else {
-          document.getElementById('status').innerText = 'Não foi possível baixar os arquivos.';
-        }
-      }
-      fecharMenus();
-    }
-
-    function baixarItemAtualModal() {
-      if (indiceMediaAtual !== -1) {
-        let item = listaExibidaAtual[indiceMediaAtual];
-        baixarArquivoBlob(item.url, item.name);
-      }
-    }
-
-    function abrirItemEmNovaAba(url, name, ext) {
-      ext = (ext || '').toLowerCase();
-      if (EXT_VID.includes(ext) || EXT_IMG.includes(ext) || EXT_AUD.includes(ext)) {
-        let win = window.open('', '_blank');
-        if (win) {
-          let mediaTag = '';
-          if (EXT_VID.includes(ext)) {
-            mediaTag = `<video src="${url}" controls autoplay style="max-width:90vw; max-height:90vh; border-radius:8px; box-shadow:0 0 20px rgba(0,0,0,0.8);"></video>`;
-          } else if (EXT_IMG.includes(ext)) {
-            mediaTag = `<img src="${url}" style="max-width:90vw; max-height:90vh; object-fit:contain; border-radius:8px;">`;
-          } else if (EXT_AUD.includes(ext)) {
-            mediaTag = `<audio src="${url}" controls autoplay style="width:400px;"></audio>`;
-          }
-
-          win.document.write(`
-            <!DOCTYPE html>
-            <html lang="pt-br">
-            <head>
-              <meta charset="UTF-8">
-              <title>${name}</title>
-              <style>
-                body { margin: 0; background: #121212; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; color: #fff; font-family: system-ui, sans-serif; }
-                .header { position: fixed; top: 16px; left: 20px; font-size: 14px; opacity: 0.8; font-weight: 500; }
-              </style>
-            </head>
-            <body>
-              <div class="header">▶ ${name}</div>
-              ${mediaTag}
-            </body>
-            </html>
-          `);
-          win.document.close();
-        }
-      } else {
-        window.open(url, '_blank');
-      }
+    function navegarMedia(dir) {
+      indiceMediaAtual += dir;
+      if (indiceMediaAtual < 0) indiceMediaAtual = listaExibidaAtual.length - 1;
+      if (indiceMediaAtual >= listaExibidaAtual.length) indiceMediaAtual = 0;
+      
+      const proximo = listaExibidaAtual[indiceMediaAtual];
+      if (!proximo.isFolder) abrirModalMedia(proximo);
     }
 
     function abrirAbaItemAtualModal() {
-      if (indiceMediaAtual !== -1) {
-        let item = listaExibidaAtual[indiceMediaAtual];
-        abrirItemEmNovaAba(item.url, item.name, item.ext);
-      }
-    }
-
-    function abrirItemSelecionado() {
-      if (itensSelecionados.length > 0) {
-        let item = listaArquivosAtual.find(i => i.url === itensSelecionados[0]) || listaExibidaAtual.find(i => i.url === itensSelecionados[0]);
-        if (item) executarAbrir(item.url, item.isFolder, item.name);
+      if (indiceMediaAtual >= 0 && listaExibidaAtual[indiceMediaAtual]) {
+        const item = listaExibidaAtual[indiceMediaAtual];
+        abrirEmNovaGuiaPersonalizada(item.url, item.name, item.ext);
       }
     }
 
     function abrirNovaAba() {
       if (itensSelecionados.length > 0) {
-        itensSelecionados.forEach(url => {
-          let item = listaArquivosAtual.find(i => i.url === url) || listaExibidaAtual.find(i => i.url === url);
-          if (item) abrirItemEmNovaAba(item.url, item.name, item.ext);
-          else window.open(url, '_blank');
-        });
+        const item = listaExibidaAtual.find(i => i.url === itensSelecionados[0]);
+        if (item) abrirEmNovaGuiaPersonalizada(item.url, item.name, item.ext);
       }
     }
 
-    function exibirContextMenuCard(e, url, idx, cardEl) {
+    function abrirEmNovaGuiaPersonalizada(url, nome, ext) {
+      const extLower = (ext || '').toLowerCase();
+      const novaAba = window.open('', '_blank');
+      if (!novaAba) return;
+
+      let conteudoHtml = '';
+
+      if (EXT_IMG.includes(extLower)) {
+        conteudoHtml = `<img src="${url}" style="max-width:100%; max-height:100vh; object-fit:contain;">`;
+      } else if (EXT_VID.includes(extLower)) {
+        conteudoHtml = `<video src="${url}" controls autoplay style="max-width:100%; max-height:100vh;"></video>`;
+      } else if (EXT_AUD.includes(extLower)) {
+        conteudoHtml = `<audio src="${url}" controls autoplay></audio>`;
+      } else {
+        novaAba.location.href = url;
+        return;
+      }
+
+      novaAba.document.write(`
+        <!DOCTYPE html>
+        <html lang="pt-br">
+        <head>
+          <meta charset="UTF-8">
+          <title>${nome || 'Visualização'}</title>
+          <style>
+            body { margin: 0; background: #0e0e0e; color: #fff; height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden; font-family: sans-serif; }
+          </style>
+        </head>
+        <body>
+          ${conteudoHtml}
+        </body>
+        </html>
+      `);
+      novaAba.document.close();
+    }
+
+    function baixarUrl(url, nome) {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = nome || 'download';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    function baixarItemAtualModal() {
+      if (indiceMediaAtual >= 0 && listaExibidaAtual[indiceMediaAtual]) {
+        const item = listaExibidaAtual[indiceMediaAtual];
+        baixarUrl(item.url, item.name);
+      }
+    }
+
+    function baixarSelecionado() {
+      itensSelecionados.forEach(url => {
+        const item = listaExibidaAtual.find(i => i.url === url);
+        if (item && !item.isFolder) baixarUrl(item.url, item.name);
+      });
+    }
+
+    function deletarSelecionados() {
+      if (itensSelecionados.length === 0) return;
+
+      if (emLixeira) {
+        if (confirm('Deseja excluir estes itens permanentemente?')) {
+          let lixeira = obterLixeira().filter(l => !itensSelecionados.includes(l.url));
+          salvarLixeira(lixeira);
+          abrirLixeira();
+        }
+      } else {
+        let lixeira = obterLixeira();
+        itensSelecionados.forEach(url => {
+          const item = listaExibidaAtual.find(i => i.url === url);
+          if (item && !lixeira.some(l => l.url === item.url)) {
+            lixeira.push(item);
+          }
+        });
+        salvarLixeira(lixeira);
+        recarregarPastaAtual();
+      }
+    }
+
+    function restaurarItemLixeira() {
+      let lixeira = obterLixeira().filter(l => !itensSelecionados.includes(l.url));
+      salvarLixeira(lixeira);
+      abrirLixeira();
+    }
+
+    function exibirContextMenuCard(e, item) {
       e.preventDefault();
       e.stopPropagation();
-      if (!itensSelecionados.includes(url)) selecionarCard(e, url, idx);
-      abrirContextMenu(e.clientX, e.clientY, true);
+
+      if (!itensSelecionados.includes(item.url)) {
+        itensSelecionados = [item.url];
+        renderizarGrid();
+      }
+
+      const menu = document.getElementById('contextMenu');
+      document.getElementById('btnRestaurar').style.display = emLixeira ? 'flex' : 'none';
+      document.getElementById('btnNovaAba').style.display = item.isFolder ? 'none' : 'flex';
+
+      menu.style.left = `${e.clientX}px`;
+      menu.style.top = `${e.clientY}px`;
+      menu.style.display = 'block';
     }
 
     function exibirContextMenuFundo(e) {
-      if (e.target.closest('#sidebar') || e.target.closest('#mediaModal')) return;
+      if (e.target.closest('.card')) return;
       e.preventDefault();
       itensSelecionados = [];
       renderizarGrid();
-      abrirContextMenu(e.clientX, e.clientY, false);
-    }
 
-    function abrirContextMenu(x, y, sobreCard) {
       const menu = document.getElementById('contextMenu');
-      document.getElementById('menuTopActions').style.display = sobreCard ? 'flex' : 'none';
-      document.getElementById('btnAbrir').style.display = (sobreCard && !emLixeira) ? 'flex' : 'none';
-      document.getElementById('btnBaixarContext').style.display = (sobreCard && !emLixeira) ? 'flex' : 'none';
-      document.getElementById('btnNovaAba').style.display = (sobreCard && !emLixeira) ? 'flex' : 'none';
-      document.getElementById('btnRestaurar').style.display = (sobreCard && emLixeira) ? 'flex' : 'none';
-      
-      let favs = obterFavoritos();
-      let ehFav = itensSelecionados.some(u => favs.some(f => f.url === u));
-      document.getElementById('txtFavorito').innerText = ehFav ? '❌ Remover dos Favoritos' : '⭐ Adicionar aos Favoritos';
-      document.getElementById('btnFavorito').style.display = (sobreCard && !emLixeira) ? 'flex' : 'none';
-
+      document.getElementById('btnRestaurar').style.display = 'none';
+      menu.style.left = `${e.clientX}px`;
+      menu.style.top = `${e.clientY}px`;
       menu.style.display = 'block';
-      menu.style.left = `${Math.min(x, window.innerWidth - 230)}px`;
-      menu.style.top = `${Math.min(y, window.innerHeight - 220)}px`;
     }
 
-    async function calcularTamanhoPasta(urlPasta) {
-      try {
-        const res = await fetch(urlPasta);
-        const html = await res.text();
-        const doc = new DOMParser().parseFromString(html, 'text/html');
-        const links = Array.from(doc.querySelectorAll('a'));
-        const urlObj = new URL(urlPasta);
-        const pathCanonical = urlObj.pathname;
-
-        let totalBytes = 0;
-        let numArquivos = 0;
-        let numPastas = 0;
-
-        for (let a of links) {
-          let href = a.getAttribute('href');
-          let name = a.innerText.trim() || href;
-          if (!href || href === '#' || href === '../' || name === 'Parent Directory') continue;
-
-          let absObj = new URL(href, urlPasta);
-          let targetPath = absObj.pathname;
-          if (!targetPath.startsWith(pathCanonical) || targetPath === pathCanonical) continue;
-
-          let relPath = targetPath.substring(pathCanonical.length);
-          let partes = relPath.split('/').filter(Boolean);
-          if (partes.length > 1) continue;
-
-          let cleanName = decodeURIComponent(partes[0] || name);
-          if (cleanName.toLowerCase() === 'files') continue;
-
-          let isFolder = absObj.href.endsWith('/');
-          if (isFolder) {
-            numPastas++;
-          } else {
-            numArquivos++;
-            let size = await obterTamanhoUrl(absObj.href);
-            totalBytes += size;
-          }
-        }
-        return { totalBytes, numArquivos, numPastas };
-      } catch {
-        return { totalBytes: 0, numArquivos: 0, numPastas: 0 };
-      }
-    }
-
-    async function abrirPropriedadesMenu() {
-      const modal = document.getElementById('propsModal');
-      const body = document.getElementById('propsBody');
-      const title = document.getElementById('propsModalTitle');
-      fecharMenus();
-
-      body.innerHTML = '<div style="text-align:center; padding:10px; color:#aaa;">Calculando tamanho...</div>';
-      modal.style.display = 'flex';
-
-      if (itensSelecionados.length === 1) {
-        let item = listaArquivosAtual.find(i => i.url === itensSelecionados[0]) || listaExibidaAtual.find(i => i.url === itensSelecionados[0]);
-        if (!item) return;
-
-        title.innerText = item.isFolder ? 'Propriedades da Pasta' : 'Propriedades do Arquivo';
-
-        if (!item.isFolder) {
-          let tamanhoBytes = await obterTamanhoUrl(item.url);
-          body.innerHTML = `
-            <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
-              <span style="font-size:36px;">📄</span>
-              <b style="font-size:14px; color:#fff;">${item.name}</b>
-            </div>
-            <hr style="border:none; border-top:1px solid #333; margin:4px 0;">
-            <div class="props-row"><span>Tipo:</span><span>${item.ext.toUpperCase()}</span></div>
-            <div class="props-row"><span>Caminho:</span><span style="font-size:10px; color:#8ab4f8; overflow:hidden; text-overflow:ellipsis; max-width:200px;">${item.url}</span></div>
-            <div class="props-row"><span>Tamanho:</span><span style="color:#8ab4f8; font-weight:bold;">${formatarTamanho(tamanhoBytes)}</span></div>
-            <div class="props-row"><span>Status:</span><span>Pronto / Acessível</span></div>
-          `;
-        } else {
-          let info = await calcularTamanhoPasta(item.url);
-          body.innerHTML = `
-            <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
-              <span style="font-size:36px;">📁</span>
-              <b style="font-size:14px; color:#fff;">${item.name}</b>
-            </div>
-            <hr style="border:none; border-top:1px solid #333; margin:4px 0;">
-            <div class="props-row"><span>Tipo:</span><span>Pasta de Arquivos</span></div>
-            <div class="props-row"><span>Caminho:</span><span style="font-size:10px; color:#8ab4f8; overflow:hidden; text-overflow:ellipsis; max-width:200px;">${item.url}</span></div>
-            <div class="props-row"><span>Contém:</span><span>${info.numArquivos} Arquivos, ${info.numPastas} Pastas</span></div>
-            <div class="props-row"><span>Tamanho:</span><span style="color:#8ab4f8; font-weight:bold;">${formatarTamanho(info.totalBytes)}</span></div>
-            <div class="props-row"><span>Status:</span><span>Pronto / Acessível</span></div>
-          `;
-        }
-      } else if (itensSelecionados.length > 1) {
-        title.innerText = 'Propriedades da Seleção';
-        let tamanhoTotal = 0;
-
-        for (let url of itensSelecionados) {
-          let item = listaArquivosAtual.find(i => i.url === url) || listaExibidaAtual.find(i => i.url === url);
-          if (item && !item.isFolder) {
-            tamanhoTotal += await obterTamanhoUrl(item.url);
-          }
-        }
-
-        body.innerHTML = `
-          <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
-            <span style="font-size:36px;">📑</span>
-            <b style="font-size:14px; color:#fff;">${itensSelecionados.length} Itens Selecionados</b>
-          </div>
-          <hr style="border:none; border-top:1px solid #333; margin:4px 0;">
-          <div class="props-row"><span>Tamanho Total:</span><span style="color:#8ab4f8; font-weight:bold;">${formatarTamanho(tamanhoTotal)}</span></div>
-        `;
-      } else {
-        title.innerText = 'Propriedades do Diretório';
-        let info = await calcularTamanhoPasta(pastaAtual);
-        let nomePasta = decodeURIComponent(pastaAtual.replace(/\/$/, '').split('/').pop() || 'Este Computador');
-
-        body.innerHTML = `
-          <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
-            <span style="font-size:36px;">💻</span>
-            <b style="font-size:14px; color:#fff;">${nomePasta}</b>
-          </div>
-          <hr style="border:none; border-top:1px solid #333; margin:4px 0;">
-          <div class="props-row"><span>Tipo:</span><span>Pasta de Arquivos</span></div>
-          <div class="props-row"><span>Caminho:</span><span style="font-size:10px; color:#8ab4f8; overflow:hidden; text-overflow:ellipsis; max-width:200px;">${pastaAtual}</span></div>
-          <div class="props-row"><span>Contém:</span><span>${info.numArquivos} Arquivos, ${info.numPastas} Pastas</span></div>
-          <div class="props-row"><span>Tamanho Total:</span><span style="color:#8ab4f8; font-weight:bold;">${formatarTamanho(info.totalBytes)}</span></div>
-        `;
+    function abrirItemSelecionado() {
+      if (itensSelecionados.length > 0) {
+        const item = listaExibidaAtual.find(i => i.url === itensSelecionados[0]);
+        if (item) abrirItem(item);
       }
     }
 
@@ -1268,56 +934,84 @@
       document.getElementById('propsModal').style.display = 'none';
     }
 
-    function deletarSelecionados() {
+    function abrirPropriedadesMenu() {
       if (itensSelecionados.length === 0) return;
-      
+      const item = listaExibidaAtual.find(i => i.url === itensSelecionados[0]);
+      if (!item) return;
+
+      const body = document.getElementById('propsBody');
+      body.innerHTML = `
+        <div class="props-row"><span>Nome:</span> <b>${item.name}</b></div>
+        <div class="props-row"><span>Tipo:</span> <b>${item.isFolder ? 'Pasta' : item.ext.toUpperCase()}</b></div>
+        <div class="props-row"><span>URL:</span> <b style="word-break:break-all;">${item.url}</b></div>
+      `;
+
+      document.getElementById('propsModal').style.display = 'flex';
+      fecharMenus();
+    }
+
+    function voltarPasta() {
       if (emLixeira) {
-        if (confirm(`Excluir definitivamente os itens selecionados?`)) {
-          let lixeira = obterLixeira().filter(i => !itensSelecionados.includes(i.url));
-          salvarLixeira(lixeira);
-          abrirLixeira();
-        }
-      } else {
-        let lixeira = obterLixeira();
-        itensSelecionados.forEach(url => {
-          let item = listaArquivosAtual.find(i => i.url === url) || listaExibidaAtual.find(i => i.url === url);
-          if (item) {
-            lixeira.push({ ...item, originalFolder: pastaAtual });
-          }
-        });
-        salvarLixeira(lixeira);
-        carregarArquivos(pastaAtual);
+        resetarNavegacao();
+        return;
       }
-    }
-
-    function restaurarItemLixeira() {
-      if (itensSelecionados.length === 0 || !emLixeira) return;
-      let lixeira = obterLixeira().filter(i => !itensSelecionados.includes(i.url));
-      salvarLixeira(lixeira);
-      abrirLixeira();
-    }
-
-    function esvaziarLixeiraDefinitivo() {
-      if (confirm('Tem certeza que deseja esvaziar a lixeira permanentemente?')) {
-        salvarLixeira([]);
-        abrirLixeira();
-      }
+      if (pastaAtual === SERVIDOR_BASE) return;
+      let rel = pastaAtual.replace(SERVIDOR_BASE, '').replace(/\/$/, '');
+      let partes = rel.split('/');
+      partes.pop();
+      let novaUrl = SERVIDOR_BASE + (partes.length > 0 ? partes.join('/') + '/' : '');
+      carregarArquivos(novaUrl);
     }
 
     function tratarTeclas(e) {
-      if (e.key === 'Delete' && itensSelecionados.length > 0) deletarSelecionados();
-      if (e.key === 'Escape') { fecharModalMedia(); fecharPropriedades(); }
-      if (e.key === 'ArrowLeft') navegarMedia(-1);
-      if (e.key === 'ArrowRight') navegarMedia(1);
-      if (e.key === 'F5') { e.preventDefault(); recarregarPastaAtual(); }
+      if (e.key === 'Escape') {
+        fecharModalMedia();
+        fecharPropriedades();
+        fecharMenus();
+      } else if (e.key === 'Enter') {
+        abrirItemSelecionado();
+      } else if (e.key === 'Delete') {
+        deletarSelecionados();
+      }
     }
 
-    function resetarNavegacao() { carregarArquivos(SERVIDOR_BASE); }
+    function atualizarSidebarFavoritos() {
+      const favs = obterFavoritos();
+      const container = document.getElementById('sidebarFavorites');
+      container.innerHTML = '';
+      favs.forEach(f => {
+        const div = document.createElement('div');
+        div.className = 'sidebar-fav-item';
+        div.innerHTML = `
+          <div class="sidebar-btn" style="flex:1;">⭐ ${f.name}</div>
+          <button class="btn-remove-fav" onclick="removerFavorito('${f.url}')">✕</button>
+        `;
+        div.querySelector('.sidebar-btn').onclick = () => carregarArquivos(f.url);
+        container.appendChild(div);
+      });
+    }
 
-    window.onload = () => {
-      atualizarSidebarFavoritos();
-      carregarArquivos(SERVIDOR_BASE);
-    };
+    function toggleFavorito() {
+      if (itensSelecionados.length === 0) return;
+      const item = listaExibidaAtual.find(i => i.url === itensSelecionados[0]);
+      if (!item) return;
+
+      let favs = obterFavoritos();
+      if (!favs.some(f => f.url === item.url)) {
+        favs.push({ name: item.name, url: item.url });
+        salvarFavoritos(favs);
+      }
+      fecharMenus();
+    }
+
+    function removerFavorito(url) {
+      let favs = obterFavoritos().filter(f => f.url !== url);
+      salvarFavoritos(favs);
+    }
+
+    // Inicialização
+    atualizarSidebarFavoritos();
+    carregarArquivos(pastaAtual);
   </script>
 </body>
 </html>
