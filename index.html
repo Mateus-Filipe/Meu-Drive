@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Drive TV Box - Windows Explorer Web</title>
   
-  <!-- PDF.js para renderizar Miniaturas Reais de PDF -->
+  <!-- PDF.js para Miniaturas Reais de PDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-  <!-- JSZip para compactar múltiplos arquivos em ZIP ao baixar -->
+  <!-- JSZip para compactar múltiplos arquivos em ZIP -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
   <style>
@@ -26,10 +26,8 @@
     #main-wrapper { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
     #main { flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; position: relative; }
 
-    /* Caixinha de Seleção por Arraste */
     #selectionBox { position: absolute; border: 1px solid #8ab4f8; background: rgba(138, 180, 248, 0.2); pointer-events: none; display: none; z-index: 100; }
 
-    /* Toolbar e Barra de Navegação Estilo Windows 11 */
     .address-bar-container { display: flex; align-items: center; gap: 8px; background: #252525; padding: 6px 12px; border-radius: 8px; border: 1px solid #333; }
     
     .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #aaa; background: #1e1e1e; padding: 6px 12px; border-radius: 6px; border: 1px solid #333; flex: 1; overflow-x: auto; }
@@ -39,7 +37,6 @@
 
     .toolbar-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
     
-    /* Barra de Pesquisa com opção de Busca Global */
     .search-box-container { display: flex; align-items: center; gap: 6px; background: #222; border: 1px solid #3d3d3d; border-radius: 6px; padding: 4px 10px; min-width: 320px; }
     .search-box-container input { background: transparent; border: none; outline: none; color: #fff; font-size: 13px; width: 100%; }
     .search-mode-label { font-size: 11px; color: #aaa; display: flex; align-items: center; gap: 4px; cursor: pointer; white-space: nowrap; border-left: 1px solid #444; padding-left: 8px; }
@@ -53,7 +50,6 @@
     .dropdown-item { padding: 8px 16px; cursor: pointer; display: flex; align-items: center; gap: 10px; color: #eee; }
     .dropdown-item:hover { background: #3a3a3a; }
 
-    /* Exibição em Grid / Modos de Visualização */
     .grid { display: grid; gap: 12px; width: 100%; align-content: start; align-items: start; padding-bottom: 80px; }
     
     .grid.view-xl { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
@@ -91,12 +87,12 @@
     
     .file-name { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
     .file-path-sub { font-size: 10px; color: #777; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; margin-top: -4px; }
+    .manual-drag-handle { position: absolute; top: 4px; right: 4px; font-size: 10px; color: #8ab4f8; background: rgba(0,0,0,0.4); padding: 2px 4px; border-radius: 3px; display: none; }
+    .mode-manual .manual-drag-handle { display: block; }
 
-    /* Painéis Laterais */
     #detailsPanel { width: 260px; background: #202020; border-left: 1px solid #2d2d2d; padding: 16px; display: none; flex-direction: column; gap: 12px; font-size: 13px; }
     #previewPanel { width: 300px; background: #202020; border-left: 1px solid #2d2d2d; padding: 16px; display: none; flex-direction: column; gap: 12px; align-items: center; justify-content: center; }
 
-    /* Menu de Contexto */
     #contextMenu { display: none; position: fixed; background: #2c2c2c; border: 1px solid #454545; border-radius: 8px; width: 220px; box-shadow: 0 8px 16px rgba(0,0,0,0.5); z-index: 1000; padding: 6px; font-size: 13px; }
     .menu-top-actions { display: flex; justify-content: space-around; border-bottom: 1px solid #3d3d3d; padding-bottom: 6px; margin-bottom: 6px; }
     .menu-top-btn { background: transparent; border: none; color: #eee; padding: 6px; border-radius: 4px; cursor: pointer; font-size: 15px; }
@@ -106,7 +102,6 @@
     .menu-shortcut { color: #888; font-size: 11px; }
     .menu-divider { height: 1px; background: #3d3d3d; margin: 4px 0; }
 
-    /* Modal do Visualizador Mídia */
     #mediaModal { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.88); z-index: 2000; flex-direction: column; align-items: center; justify-content: space-between; padding: 20px; box-sizing: border-box; }
     .modal-header { width: 100%; display: flex; justify-content: space-between; align-items: center; max-width: 1000px; }
     .modal-title { font-size: 16px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80%; }
@@ -126,7 +121,6 @@
 
     .modal-footer-toolbar { display: flex; gap: 12px; background: #222; border: 1px solid #333; padding: 8px 16px; border-radius: 30px; }
 
-    /* Modal de Propriedades */
     #propsModal { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 3000; align-items: center; justify-content: center; }
     .props-dialog { width: 380px; background: #242424; border: 1px solid #454545; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); display: flex; flex-direction: column; overflow: hidden; font-size: 12px; }
     .props-header { background: #1f1f1f; padding: 10px 14px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; font-weight: 600; }
@@ -158,7 +152,6 @@
       </div>
 
       <div class="toolbar-actions" id="toolbarActions">
-        <!-- Barra de Pesquisa com Modo Global -->
         <div class="search-box-container">
           🔍 <input type="text" id="searchInput" placeholder="Pesquisar arquivos ou pastas..." oninput="tratarInputBusca()">
           <label class="search-mode-label" title="Pesquisar em todas as pastas e subpastas">
@@ -175,7 +168,7 @@
             <div class="dropdown-item" onclick="definirOrdenacao('name')">• Nome</div>
             <div class="dropdown-item" onclick="definirOrdenacao('date')">Data de modificação</div>
             <div class="dropdown-item" onclick="definirOrdenacao('type')">Tipo</div>
-            <div class="dropdown-item" onclick="definirOrdenacao('manual')">Organização Manual / Livre</div>
+            <div class="dropdown-item" onclick="definirOrdenacao('manual')">✋ Organização Manual / Livre</div>
             <div class="menu-divider"></div>
             <div class="dropdown-item" onclick="definirOrdem('asc')">• Ordem Crescente</div>
             <div class="dropdown-item" onclick="definirOrdem('desc')">Ordem Decrescente</div>
@@ -200,7 +193,7 @@
         </div>
       </div>
 
-      <div id="status" style="font-size: 12px; color: #888;"></div>
+      <div id="status" style="font-size: 12px; color: #8ab4f8; font-weight: 500;"></div>
       
       <div style="display: flex; flex: 1; gap: 12px; overflow: hidden;">
         <div class="grid view-lg" id="gridContent" style="flex:1;"></div>
@@ -216,7 +209,6 @@
     </div>
   </div>
 
-  <!-- Pop-up Modal Universal para Mídia -->
   <div id="mediaModal">
     <div class="modal-header">
       <div class="modal-title" id="modalTitle">Nome do Arquivo</div>
@@ -240,7 +232,6 @@
     </div>
   </div>
 
-  <!-- Modal de Propriedades -->
   <div id="propsModal">
     <div class="props-dialog">
       <div class="props-header">
@@ -254,7 +245,6 @@
     </div>
   </div>
 
-  <!-- Menu de Contexto -->
   <div id="contextMenu">
     <div class="menu-top-actions" id="menuTopActions">
       <button class="menu-top-btn" title="Baixar Arquivo" onclick="baixarSelecionado()">📥</button>
@@ -301,7 +291,6 @@
     let listaExibidaAtual = [];
     let indiceMediaAtual = -1;
 
-    // Controle da Busca Global
     let buscaGlobalId = 0;
     let buscandoGlobalmente = false;
 
@@ -361,8 +350,37 @@
 
     function definirOrdenacao(criterio) {
       ordenacaoAtual = criterio;
+      if (criterio === 'manual') {
+        document.getElementById('status').innerText = '✋ Organização Manual ativa: Arraste e solte qualquer arquivo ou pasta para alterar sua ordem.';
+        carregarOrdemManualSalva();
+      } else {
+        document.getElementById('status').innerText = '';
+      }
       renderizarGrid();
       fecharMenus();
+    }
+
+    function salvarOrdemManual() {
+      if (ordenacaoAtual === 'manual') {
+        const ordemUrls = listaExibidaAtual.map(i => i.url);
+        localStorage.setItem('ordem_manual_' + pastaAtual, JSON.stringify(ordemUrls));
+      }
+    }
+
+    function carregarOrdemManualSalva() {
+      const salva = localStorage.getItem('ordem_manual_' + pastaAtual);
+      if (salva) {
+        try {
+          const ordemUrls = JSON.parse(salva);
+          listaArquivosAtual.sort((a, b) => {
+            let idxA = ordemUrls.indexOf(a.url);
+            let idxB = ordemUrls.indexOf(b.url);
+            if (idxA === -1) idxA = 9999;
+            if (idxB === -1) idxB = 9999;
+            return idxA - idxB;
+          });
+        } catch(e) {}
+      }
     }
 
     function definirOrdem(dir) {
@@ -407,7 +425,7 @@
           let absoluteUrlObj = new URL(href, pastaAtual);
           let targetPath = absoluteUrlObj.pathname;
 
-          if (!targetPath.startsWith(pathAtualCanonical) || targetPath === pathAtualCanonical) return;
+          if (!targetPath.startsWith(pathAtualCanonical) || targetPath === pathCanonical) return;
 
           let relPath = targetPath.substring(pathAtualCanonical.length);
           let partes = relPath.split('/').filter(Boolean);
@@ -432,14 +450,15 @@
           }
         });
 
-        document.getElementById('status').innerText = '';
+        if (ordenacaoAtual === 'manual') carregarOrdemManualSalva();
+
+        document.getElementById('status').innerText = ordenacaoAtual === 'manual' ? '✋ Organização Manual ativa: Arraste os cards para reordenar.' : '';
         renderizarGrid();
       } catch (err) {
         document.getElementById('status').innerText = 'Erro de conexão: ' + err.message;
       }
     }
 
-    /* Lógica de Pesquisa Local x Busca Global */
     let debounceTimer = null;
     function tratarInputBusca() {
       clearTimeout(debounceTimer);
@@ -469,7 +488,7 @@
       document.getElementById('status').innerText = `🔍 Pesquisando por "${termo}" em todo o servidor...`;
 
       while (pastasParaVisitar.length > 0) {
-        if (currentSearchId !== buscaGlobalId) return; // Cancelar se houver nova busca
+        if (currentSearchId !== buscaGlobalId) return;
 
         let urlDir = pastasParaVisitar.shift();
         try {
@@ -534,7 +553,6 @@
       }
     }
 
-    /* Seleção por Arraste */
     let selecionandoArrasto = false;
     let startX = 0, startY = 0;
 
@@ -610,7 +628,6 @@
       document.removeEventListener('mouseup', finalizarSelecaoArrasto);
     }
 
-    /* Drag and Drop de Organização Manual */
     function iniciarDragItem(e, url, isFolder, name, idx) {
       e.dataTransfer.setData('text/plain', JSON.stringify({ url, isFolder, name, index: idx }));
       e.dataTransfer.effectAllowed = 'move';
@@ -639,10 +656,15 @@
       try {
         const data = JSON.parse(rawData);
 
-        if (ordenacaoAtual === 'manual' && typeof targetIndex === 'number') {
-          const itemMovido = listaExibidaAtual.splice(data.index, 1)[0];
-          listaExibidaAtual.splice(targetIndex, 0, itemMovido);
-          renderizarGrid();
+        /* Reordenação Manual */
+        if (ordenacaoAtual === 'manual' && typeof targetIndex === 'number' && data.index !== undefined) {
+          if (data.index !== targetIndex) {
+            const itemMovido = listaExibidaAtual.splice(data.index, 1)[0];
+            listaExibidaAtual.splice(targetIndex, 0, itemMovido);
+            salvarOrdemManual();
+            renderizarGrid();
+            document.getElementById('status').innerText = '✋ Ordem manual atualizada!';
+          }
           return;
         }
 
@@ -661,7 +683,7 @@
         document.getElementById('status').innerText = 'Item movido!';
         carregarArquivos(pastaAtual);
       } catch(err) {
-        document.getElementById('status').innerText = 'Organização atualizada.';
+        document.getElementById('status').innerText = 'Ação concluída.';
       }
     }
 
@@ -776,12 +798,15 @@
       }
 
       if (ordenacaoAtual !== 'manual') {
+        gridEl.classList.remove('mode-manual');
         listaExibidaAtual.sort((a, b) => {
           if (a.isFolder && !b.isFolder) return -1;
           if (!a.isFolder && b.isFolder) return 1;
           let res = a.name.localeCompare(b.name);
           return ordemDirecao === 'asc' ? res : -res;
         });
+      } else {
+        gridEl.classList.add('mode-manual');
       }
 
       gridEl.innerHTML = listaExibidaAtual.map((item, idx) => {
@@ -807,6 +832,7 @@
                onclick="selecionarCard(event, '${item.url}', ${idx})"
                ondblclick="executarAbrir('${item.url}', ${item.isFolder}, '${item.name}')"
                oncontextmenu="exibirContextMenuCard(event, '${item.url}', ${idx}, this)">
+            <span class="manual-drag-handle">⋮⋮ mover</span>
             <div class="preview-box" id="prev-${idx}">
               ${isImg ? `<img src="${item.url}" loading="lazy">` : ''}
               ${isVid ? `<video src="${item.url}" preload="metadata"></video>` : ''}
@@ -892,7 +918,7 @@
 
       let idx = listaExibidaAtual.findIndex(i => i.url === url);
       if (idx !== -1) abrirModalMedia(idx);
-      else window.open(url, '_blank');
+      else abrirItemEmNovaAba(url, name, (name.split('.').pop() || ''));
     }
 
     async function abrirModalMedia(index) {
@@ -926,7 +952,7 @@
           txt.innerText = await res.text();
         } catch { txt.innerText = 'Erro ao carregar documento.'; }
       } else {
-        window.open(item.url, '_blank');
+        abrirItemEmNovaAba(item.url, item.name, ext);
         return;
       }
 
@@ -990,9 +1016,7 @@
               const blob = await res.blob();
               zip.file(item.name, blob);
               arquivosInclusos++;
-            } catch (err) {
-              console.error('Erro ao adicionar arquivo ao ZIP:', item.name);
-            }
+            } catch (err) { }
           }
         }
 
@@ -1021,9 +1045,49 @@
       }
     }
 
+    /* Correção 1: Execução em Nova Guia sem Forçar Download */
+    function abrirItemEmNovaAba(url, name, ext) {
+      ext = (ext || '').toLowerCase();
+      if (EXT_VID.includes(ext) || EXT_IMG.includes(ext) || EXT_AUD.includes(ext)) {
+        let win = window.open('', '_blank');
+        if (win) {
+          let mediaTag = '';
+          if (EXT_VID.includes(ext)) {
+            mediaTag = `<video src="${url}" controls autoplay style="max-width:90vw; max-height:90vh; border-radius:8px; box-shadow:0 0 20px rgba(0,0,0,0.8);"></video>`;
+          } else if (EXT_IMG.includes(ext)) {
+            mediaTag = `<img src="${url}" style="max-width:90vw; max-height:90vh; object-fit:contain; border-radius:8px;">`;
+          } else if (EXT_AUD.includes(ext)) {
+            mediaTag = `<audio src="${url}" controls autoplay style="width:400px;"></audio>`;
+          }
+
+          win.document.write(`
+            <!DOCTYPE html>
+            <html lang="pt-br">
+            <head>
+              <meta charset="UTF-8">
+              <title>${name}</title>
+              <style>
+                body { margin: 0; background: #121212; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; color: #fff; font-family: system-ui, sans-serif; }
+                .header { position: fixed; top: 16px; left: 20px; font-size: 14px; opacity: 0.8; font-weight: 500; }
+              </style>
+            </head>
+            <body>
+              <div class="header">▶ ${name}</div>
+              ${mediaTag}
+            </body>
+            </html>
+          `);
+          win.document.close();
+        }
+      } else {
+        window.open(url, '_blank');
+      }
+    }
+
     function abrirAbaItemAtualModal() {
       if (indiceMediaAtual !== -1) {
-        window.open(listaExibidaAtual[indiceMediaAtual].url, '_blank');
+        let item = listaExibidaAtual[indiceMediaAtual];
+        abrirItemEmNovaAba(item.url, item.name, item.ext);
       }
     }
 
@@ -1036,7 +1100,11 @@
 
     function abrirNovaAba() {
       if (itensSelecionados.length > 0) {
-        itensSelecionados.forEach(url => window.open(url, '_blank'));
+        itensSelecionados.forEach(url => {
+          let item = listaArquivosAtual.find(i => i.url === url) || listaExibidaAtual.find(i => i.url === url);
+          if (item) abrirItemEmNovaAba(item.url, item.name, item.ext);
+          else window.open(url, '_blank');
+        });
       }
     }
 
@@ -1073,6 +1141,51 @@
       menu.style.top = `${Math.min(y, window.innerHeight - 220)}px`;
     }
 
+    /* Correção 2: Varredura Completa para Tamanho Real de Subpastas */
+    async function calcularTamanhoPasta(urlPasta) {
+      try {
+        const res = await fetch(urlPasta);
+        const html = await res.text();
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const links = Array.from(doc.querySelectorAll('a'));
+        const urlObj = new URL(urlPasta);
+        const pathCanonical = urlObj.pathname;
+
+        let totalBytes = 0;
+        let numArquivos = 0;
+        let numPastas = 0;
+
+        for (let a of links) {
+          let href = a.getAttribute('href');
+          let name = a.innerText.trim() || href;
+          if (!href || href === '#' || href === '../' || name === 'Parent Directory') continue;
+
+          let absObj = new URL(href, urlPasta);
+          let targetPath = absObj.pathname;
+          if (!targetPath.startsWith(pathCanonical) || targetPath === pathCanonical) continue;
+
+          let relPath = targetPath.substring(pathCanonical.length);
+          let partes = relPath.split('/').filter(Boolean);
+          if (partes.length > 1) continue;
+
+          let cleanName = decodeURIComponent(partes[0] || name);
+          if (cleanName.toLowerCase() === 'files') continue;
+
+          let isFolder = absObj.href.endsWith('/');
+          if (isFolder) {
+            numPastas++;
+          } else {
+            numArquivos++;
+            let size = await obterTamanhoUrl(absObj.href);
+            totalBytes += size;
+          }
+        }
+        return { totalBytes, numArquivos, numPastas };
+      } catch {
+        return { totalBytes: 0, numArquivos: 0, numPastas: 0 };
+      }
+    }
+
     async function abrirPropriedadesMenu() {
       const modal = document.getElementById('propsModal');
       const body = document.getElementById('propsBody');
@@ -1087,28 +1200,35 @@
         if (!item) return;
 
         title.innerText = item.isFolder ? 'Propriedades da Pasta' : 'Propriedades do Arquivo';
-        let tamanhoBytes = 0;
 
         if (!item.isFolder) {
-          tamanhoBytes = await obterTamanhoUrl(item.url);
+          let tamanhoBytes = await obterTamanhoUrl(item.url);
+          body.innerHTML = `
+            <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
+              <span style="font-size:36px;">📄</span>
+              <b style="font-size:14px; color:#fff;">${item.name}</b>
+            </div>
+            <hr style="border:none; border-top:1px solid #333; margin:4px 0;">
+            <div class="props-row"><span>Tipo:</span><span>${item.ext.toUpperCase()}</span></div>
+            <div class="props-row"><span>Caminho:</span><span style="font-size:10px; color:#8ab4f8; overflow:hidden; text-overflow:ellipsis; max-width:200px;">${item.url}</span></div>
+            <div class="props-row"><span>Tamanho:</span><span style="color:#8ab4f8; font-weight:bold;">${formatarTamanho(tamanhoBytes)}</span></div>
+            <div class="props-row"><span>Status:</span><span>Pronto / Acessível</span></div>
+          `;
         } else {
-          let arquivos = listaArquivosAtual.filter(i => !i.isFolder);
-          for (let f of arquivos) {
-            tamanhoBytes += await obterTamanhoUrl(f.url);
-          }
+          let info = await calcularTamanhoPasta(item.url);
+          body.innerHTML = `
+            <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
+              <span style="font-size:36px;">📁</span>
+              <b style="font-size:14px; color:#fff;">${item.name}</b>
+            </div>
+            <hr style="border:none; border-top:1px solid #333; margin:4px 0;">
+            <div class="props-row"><span>Tipo:</span><span>Pasta de Arquivos</span></div>
+            <div class="props-row"><span>Caminho:</span><span style="font-size:10px; color:#8ab4f8; overflow:hidden; text-overflow:ellipsis; max-width:200px;">${item.url}</span></div>
+            <div class="props-row"><span>Contém:</span><span>${info.numArquivos} Arquivos, ${info.numPastas} Pastas</span></div>
+            <div class="props-row"><span>Tamanho:</span><span style="color:#8ab4f8; font-weight:bold;">${formatarTamanho(info.totalBytes)}</span></div>
+            <div class="props-row"><span>Status:</span><span>Pronto / Acessível</span></div>
+          `;
         }
-
-        body.innerHTML = `
-          <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
-            <span style="font-size:36px;">${item.isFolder ? '📁' : '📄'}</span>
-            <b style="font-size:14px; color:#fff;">${item.name}</b>
-          </div>
-          <hr style="border:none; border-top:1px solid #333; margin:4px 0;">
-          <div class="props-row"><span>Tipo:</span><span>${item.isFolder ? 'Pasta de Arquivos' : item.ext.toUpperCase()}</span></div>
-          <div class="props-row"><span>Caminho:</span><span style="font-size:10px; color:#8ab4f8; overflow:hidden; text-overflow:ellipsis; max-width:200px;">${item.url}</span></div>
-          <div class="props-row"><span>Tamanho:</span><span style="color:#8ab4f8; font-weight:bold;">${formatarTamanho(tamanhoBytes)}</span></div>
-          <div class="props-row"><span>Status:</span><span>Pronto / Acessível</span></div>
-        `;
       } else if (itensSelecionados.length > 1) {
         title.innerText = 'Propriedades da Seleção';
         let tamanhoTotal = 0;
@@ -1130,14 +1250,8 @@
         `;
       } else {
         title.innerText = 'Propriedades do Diretório';
-        let totalArquivos = listaArquivosAtual.filter(i => !i.isFolder);
-        let totalPastas = listaArquivosAtual.filter(i => i.isFolder).length;
+        let info = await calcularTamanhoPasta(pastaAtual);
         let nomePasta = decodeURIComponent(pastaAtual.replace(/\/$/, '').split('/').pop() || 'Este Computador');
-
-        let tamanhoTotal = 0;
-        for (let f of totalArquivos) {
-          tamanhoTotal += await obterTamanhoUrl(f.url);
-        }
 
         body.innerHTML = `
           <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
@@ -1147,8 +1261,8 @@
           <hr style="border:none; border-top:1px solid #333; margin:4px 0;">
           <div class="props-row"><span>Tipo:</span><span>Pasta de Arquivos</span></div>
           <div class="props-row"><span>Caminho:</span><span style="font-size:10px; color:#8ab4f8; overflow:hidden; text-overflow:ellipsis; max-width:200px;">${pastaAtual}</span></div>
-          <div class="props-row"><span>Contém:</span><span>${totalArquivos.length} Arquivos, ${totalPastas} Pastas</span></div>
-          <div class="props-row"><span>Tamanho Total:</span><span style="color:#8ab4f8; font-weight:bold;">${formatarTamanho(tamanhoTotal)}</span></div>
+          <div class="props-row"><span>Contém:</span><span>${info.numArquivos} Arquivos, ${info.numPastas} Pastas</span></div>
+          <div class="props-row"><span>Tamanho Total:</span><span style="color:#8ab4f8; font-weight:bold;">${formatarTamanho(info.totalBytes)}</span></div>
         `;
       }
     }
