@@ -127,104 +127,6 @@
     .props-body { padding: 16px; display: flex; flex-direction: column; gap: 10px; color: #ccc; }
     .props-row { display: flex; justify-content: space-between; border-bottom: 1px dashed #333; padding-bottom: 4px; }
     .props-footer { padding: 10px; background: #1f1f1f; display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid #333; }
-
-    /* ====================================================
-       MODIFICAÇÕES EXCLUSIVAS PARA MOBILE (TELAS < 768px)
-       ==================================================== */
-    @media (max-width: 768px) {
-      body {
-        flex-direction: column;
-        height: 100vh;
-        overflow: hidden;
-      }
-
-      /* Painel Lateral Compacto no Mobile */
-      #sidebar {
-        width: 100%;
-        max-height: 120px;
-        border-right: none;
-        border-bottom: 1px solid #2d2d2d;
-        padding: 8px 12px;
-        gap: 6px;
-      }
-
-      .sidebar-section-title {
-        margin-top: 4px;
-      }
-
-      #main {
-        padding: 10px;
-        gap: 10px;
-      }
-
-      /* Reorganização das Barras Superiores */
-      .address-bar-container {
-        flex-wrap: wrap;
-        gap: 6px;
-        padding: 6px;
-      }
-
-      .breadcrumb {
-        width: 100%;
-        order: 2;
-      }
-
-      .toolbar-actions {
-        gap: 8px;
-      }
-
-      .search-box-container {
-        min-width: 100%;
-        width: 100%;
-      }
-
-      /* Redimensionamento dos Grids para Telas Menores */
-      .grid.view-xl { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
-      .grid.view-xl .preview-box { height: 100px; }
-
-      .grid.view-lg { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
-      .grid.view-lg .preview-box { height: 80px; }
-
-      .grid.view-md { grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); }
-      .grid.view-md .preview-box { height: 60px; }
-
-      .grid.view-blocks { grid-template-columns: 1fr; }
-
-      /* Painéis Auxiliares em Pop-up para Mobile */
-      #detailsPanel, #previewPanel {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        width: 100%;
-        max-height: 50vh;
-        z-index: 400;
-        box-shadow: 0 -4px 16px rgba(0,0,0,0.8);
-      }
-
-      /* Caixas de Diálogo Responsivas */
-      #mediaModal {
-        padding: 10px;
-      }
-
-      .props-dialog {
-        width: 92vw;
-        max-width: 380px;
-      }
-
-      /* Ajustes de Toque (Touch Targets) */
-      .btn-tool {
-        padding: 6px 10px;
-        height: 36px;
-      }
-
-      .nav-arrow {
-        padding: 8px 12px;
-        font-size: 18px;
-      }
-      .nav-prev { left: 4px; }
-      .nav-next { right: 4px; }
-    }
   </style>
 </head>
 <body onclick="fecharMenus()" oncontextmenu="exibirContextMenuFundo(event)" onkeydown="tratarTeclas(event)">
@@ -377,6 +279,11 @@
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
     const SERVIDOR_BASE = 'http://hd-externo.mateus.mooo.com:2101/files/';
+    // Usa a autenticação HTTP do HFS sem gravar usuário ou senha no GitHub Pages.
+    async function fetchHFS(url, options = {}) {
+      return fetch(url, { ...options, credentials: 'include' });
+    }
+
     let pastaAtual = SERVIDOR_BASE;
     let emLixeira = false;
     
@@ -412,7 +319,7 @@
 
     async function obterTamanhoUrl(url) {
       try {
-        const res = await fetch(url, { method: 'HEAD' });
+        const res = await fetchHFS(url, { method: 'HEAD' });
         const size = res.headers.get('content-length');
         return size ? parseInt(size, 10) : 0;
       } catch { return 0; }
@@ -521,7 +428,7 @@
       atualizarBreadcrumb();
 
       try {
-        const response = await fetch(pastaAtual);
+        const response = await fetchHFS(pastaAtual);
         const htmlText = await response.text();
         const parser = new DOMParser();
         const doc = parser.parseFromString(htmlText, 'text/html');
@@ -616,7 +523,7 @@
 
         let urlDir = pastasParaVisitar.shift();
         try {
-          const res = await fetch(urlDir);
+          const res = await fetchHFS(urlDir);
           const html = await res.text();
           const doc = new DOMParser().parseFromString(html, 'text/html');
           const links = Array.from(doc.querySelectorAll('a'));
@@ -807,7 +714,7 @@
 
         document.getElementById('status').innerText = `Movendo ${data.name}...`;
 
-        await fetch(data.url, {
+        await fetchHFS(data.url, {
           method: 'MOVE',
           headers: { 'Destination': destUrl }
         });
@@ -1040,7 +947,7 @@
 
     async function renderizarThumbnailPDF(url, elementId) {
       try {
-        const loadingTask = pdfjsLib.getDocument(url);
+        const loadingTask = pdfjsLib.getDocument({ url: url, withCredentials: true });
         const pdf = await loadingTask.promise;
         const page = await pdf.getPage(1);
         const viewport = page.getViewport({ scale: 0.3 });
@@ -1092,7 +999,7 @@
         txt.style.display = 'block';
         txt.innerText = 'Carregando...';
         try {
-          let res = await fetch(item.url);
+          let res = await fetchHFS(item.url);
           txt.innerText = await res.text();
         } catch { txt.innerText = 'Erro ao carregar documento.'; }
       } else {
@@ -1124,7 +1031,7 @@
 
     async function baixarArquivoBlob(url, name) {
       try {
-        const response = await fetch(url);
+        const response = await fetchHFS(url);
         const blob = await response.blob();
         const blobUrl = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -1156,7 +1063,7 @@
           let item = listaArquivosAtual.find(i => i.url === url) || listaExibidaAtual.find(i => i.url === url);
           if (item && !item.isFolder) {
             try {
-              const res = await fetch(item.url);
+              const res = await fetchHFS(item.url);
               const blob = await res.blob();
               zip.file(item.name, blob);
               arquivosInclusos++;
@@ -1251,7 +1158,7 @@
           win.document.close();
 
           try {
-            const response = await fetch(url);
+            const response = await fetchHFS(url);
             const blob = await response.blob();
             const mimeType = isVid ? `video/${ext === 'mkv' ? 'webm' : ext}` : `audio/${ext}`;
             const mediaBlob = new Blob([blob], { type: mimeType });
@@ -1340,7 +1247,7 @@
 
     async function calcularTamanhoPasta(urlPasta) {
       try {
-        const res = await fetch(urlPasta);
+        const res = await fetchHFS(urlPasta);
         const html = await res.text();
         const doc = new DOMParser().parseFromString(html, 'text/html');
         const links = Array.from(doc.querySelectorAll('a'));
