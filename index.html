@@ -279,11 +279,6 @@
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
     const SERVIDOR_BASE = 'http://hd-externo.mateus.mooo.com:2101/files/';
-    // Usa a autenticação HTTP do HFS sem gravar usuário ou senha no GitHub Pages.
-    async function fetchHFS(url, options = {}) {
-      return fetch(url, { ...options, credentials: 'include' });
-    }
-
     let pastaAtual = SERVIDOR_BASE;
     let emLixeira = false;
     
@@ -319,7 +314,7 @@
 
     async function obterTamanhoUrl(url) {
       try {
-        const res = await fetchHFS(url, { method: 'HEAD' });
+        const res = await fetch(url, { method: 'HEAD' });
         const size = res.headers.get('content-length');
         return size ? parseInt(size, 10) : 0;
       } catch { return 0; }
@@ -428,7 +423,7 @@
       atualizarBreadcrumb();
 
       try {
-        const response = await fetchHFS(pastaAtual);
+        const response = await fetch(pastaAtual);
         const htmlText = await response.text();
         const parser = new DOMParser();
         const doc = parser.parseFromString(htmlText, 'text/html');
@@ -523,7 +518,7 @@
 
         let urlDir = pastasParaVisitar.shift();
         try {
-          const res = await fetchHFS(urlDir);
+          const res = await fetch(urlDir);
           const html = await res.text();
           const doc = new DOMParser().parseFromString(html, 'text/html');
           const links = Array.from(doc.querySelectorAll('a'));
@@ -714,7 +709,7 @@
 
         document.getElementById('status').innerText = `Movendo ${data.name}...`;
 
-        await fetchHFS(data.url, {
+        await fetch(data.url, {
           method: 'MOVE',
           headers: { 'Destination': destUrl }
         });
@@ -947,7 +942,7 @@
 
     async function renderizarThumbnailPDF(url, elementId) {
       try {
-        const loadingTask = pdfjsLib.getDocument({ url: url, withCredentials: true });
+        const loadingTask = pdfjsLib.getDocument(url);
         const pdf = await loadingTask.promise;
         const page = await pdf.getPage(1);
         const viewport = page.getViewport({ scale: 0.3 });
@@ -999,7 +994,7 @@
         txt.style.display = 'block';
         txt.innerText = 'Carregando...';
         try {
-          let res = await fetchHFS(item.url);
+          let res = await fetch(item.url);
           txt.innerText = await res.text();
         } catch { txt.innerText = 'Erro ao carregar documento.'; }
       } else {
@@ -1031,7 +1026,7 @@
 
     async function baixarArquivoBlob(url, name) {
       try {
-        const response = await fetchHFS(url);
+        const response = await fetch(url);
         const blob = await response.blob();
         const blobUrl = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -1063,7 +1058,7 @@
           let item = listaArquivosAtual.find(i => i.url === url) || listaExibidaAtual.find(i => i.url === url);
           if (item && !item.isFolder) {
             try {
-              const res = await fetchHFS(item.url);
+              const res = await fetch(item.url);
               const blob = await res.blob();
               zip.file(item.name, blob);
               arquivosInclusos++;
@@ -1158,7 +1153,7 @@
           win.document.close();
 
           try {
-            const response = await fetchHFS(url);
+            const response = await fetch(url);
             const blob = await response.blob();
             const mimeType = isVid ? `video/${ext === 'mkv' ? 'webm' : ext}` : `audio/${ext}`;
             const mediaBlob = new Blob([blob], { type: mimeType });
@@ -1247,7 +1242,7 @@
 
     async function calcularTamanhoPasta(urlPasta) {
       try {
-        const res = await fetchHFS(urlPasta);
+        const res = await fetch(urlPasta);
         const html = await res.text();
         const doc = new DOMParser().parseFromString(html, 'text/html');
         const links = Array.from(doc.querySelectorAll('a'));
